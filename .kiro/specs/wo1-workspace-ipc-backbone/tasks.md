@@ -315,7 +315,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 1] **T7 — Final verification pass and commit — Qwen3 Coder Next**
+- [x] [CAT 1] **T7 — Final verification pass and commit — Qwen3 Coder Next** (x86-64 local verification + commit done; ARM64/t4g.small cross-check NOT performed — no AWS credentials/EC2 access in this environment, see commit message for detail)
 
   ⚠️ **Model check:** Switch back to Qwen3 Coder Next.
 
