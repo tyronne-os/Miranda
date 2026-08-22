@@ -1,11 +1,12 @@
 //! miranda-ipc — Work Order 1: the POSIX shared-memory ring buffer at
 //! `/dev/shm/miranda_bus`, lock-free atomic head/tail pointers, and C-ABI
 //! aligned payload structs for audio chunks, 52-channel ARKit blendshape
-//! frames, and 9-coefficient spherical harmonic vectors.
+//! frames, 9-coefficient spherical harmonic vectors, and WO-4
+//! `KinematicTransformFrame` quaternions for neck/clavicle routing.
 //!
 //! # What this is
 //!
-//! Three independent single-producer / single-consumer (SPSC) ring buffers
+//! Four independent single-producer / single-consumer (SPSC) ring buffers
 //! sharing one memory mapping. Each ring is lock-free: coordination is a pair
 //! of `AtomicUsize` counters (`head` = read position, `tail` = write
 //! position), never a mutex. The bus is on the critical path of a 60 FPS
@@ -50,7 +51,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use bytemuck::Pod;
 use memmap2::MmapMut;
-use miranda_core::{AudioChunk, BackpressureError, BlendshapeFrame, RingId, SphericalHarmonics};
+use miranda_core::{
+    AudioChunk, BackpressureError, BlendshapeFrame, KinematicTransformFrame, RingId,
+    SphericalHarmonics,
+};
 
 /// Canonical path for the production bus. `/dev/shm` is a tmpfs mount
 /// (RAM-backed), which is what makes the ≤50 μs round-trip target
@@ -71,6 +75,9 @@ const CTRL_BYTES: usize = 2 * CACHE_LINE;
 const AUDIO_SLOTS: usize = 64;
 const BLEND_SLOTS: usize = 128;
 const SH_SLOTS: usize = 128;
+/// 128 slots × 88 bytes = 11,264 bytes. Matches the blendshape ring depth
+/// because every blendshape frame should have a companion kinematic frame.
+const KINEMATIC_SLOTS: usize = 128;
 
 /// Rounds `value` up to the next multiple of `align`. `align` must be a
 /// power of two.
@@ -94,8 +101,13 @@ const SH_CTRL_OFF: usize = align_up(BLEND_DATA_OFF + BLEND_DATA_BYTES, CACHE_LIN
 const SH_DATA_OFF: usize = align_up(SH_CTRL_OFF + CTRL_BYTES, CACHE_LINE);
 const SH_DATA_BYTES: usize = SH_SLOTS * std::mem::size_of::<SphericalHarmonics>();
 
+const KINEMATIC_CTRL_OFF: usize = align_up(SH_DATA_OFF + SH_DATA_BYTES, CACHE_LINE);
+const KINEMATIC_DATA_OFF: usize = align_up(KINEMATIC_CTRL_OFF + CTRL_BYTES, CACHE_LINE);
+const KINEMATIC_DATA_BYTES: usize =
+    KINEMATIC_SLOTS * std::mem::size_of::<KinematicTransformFrame>();
+
 /// Total size of the shared-memory region, rounded up to a cache line.
-pub const BUS_TOTAL_BYTES: usize = align_up(SH_DATA_OFF + SH_DATA_BYTES, CACHE_LINE);
+pub const BUS_TOTAL_BYTES: usize = align_up(KINEMATIC_DATA_OFF + KINEMATIC_DATA_BYTES, CACHE_LINE);
 
 // Compile-time proof of every layout invariant the unsafe code below relies
 // on. If any of these ever becomes false (someone adds a field, changes a
@@ -105,11 +117,13 @@ const _: () = {
     assert!(AUDIO_SLOTS.is_power_of_two());
     assert!(BLEND_SLOTS.is_power_of_two());
     assert!(SH_SLOTS.is_power_of_two());
+    assert!(KINEMATIC_SLOTS.is_power_of_two());
 
     // Control blocks must be aligned for AtomicUsize.
     assert!(AUDIO_CTRL_OFF % std::mem::align_of::<AtomicUsize>() == 0);
     assert!(BLEND_CTRL_OFF % std::mem::align_of::<AtomicUsize>() == 0);
     assert!(SH_CTRL_OFF % std::mem::align_of::<AtomicUsize>() == 0);
+    assert!(KINEMATIC_CTRL_OFF % std::mem::align_of::<AtomicUsize>() == 0);
     // ...and head/tail must not share a cache line.
     assert!(CTRL_BYTES >= 2 * CACHE_LINE);
     assert!(std::mem::size_of::<AtomicUsize>() <= CACHE_LINE);
@@ -125,11 +139,18 @@ const _: () = {
     assert!(
         std::mem::size_of::<SphericalHarmonics>() % std::mem::align_of::<SphericalHarmonics>() == 0
     );
+    assert!(KINEMATIC_DATA_OFF % std::mem::align_of::<KinematicTransformFrame>() == 0);
+    assert!(
+        std::mem::size_of::<KinematicTransformFrame>()
+            % std::mem::align_of::<KinematicTransformFrame>()
+            == 0
+    );
 
     // Regions must not overlap.
     assert!(AUDIO_DATA_OFF + AUDIO_DATA_BYTES <= BLEND_CTRL_OFF);
     assert!(BLEND_DATA_OFF + BLEND_DATA_BYTES <= SH_CTRL_OFF);
-    assert!(SH_DATA_OFF + SH_DATA_BYTES <= BUS_TOTAL_BYTES);
+    assert!(SH_DATA_OFF + SH_DATA_BYTES <= KINEMATIC_CTRL_OFF);
+    assert!(KINEMATIC_DATA_OFF + KINEMATIC_DATA_BYTES <= BUS_TOTAL_BYTES);
 };
 
 /// A 64-byte, 64-byte-aligned block. Used only to obtain a cache-line-aligned
@@ -498,10 +519,33 @@ impl MirandaBus {
         self.ring_pop(SH_CTRL_OFF, SH_DATA_OFF, SH_SLOTS)
     }
 
-    /// Capacity in slots of each ring, as `(audio, blendshape, sh)`.
-    /// Exposed for telemetry — THE VANITY shows ring occupancy per node.
-    pub const fn capacities() -> (usize, usize, usize) {
-        (AUDIO_SLOTS, BLEND_SLOTS, SH_SLOTS)
+    /// Pushes a [`KinematicTransformFrame`] onto the kinematic ring.
+    ///
+    /// The kinematic ring runs in lockstep with the blendshape ring: one
+    /// frame per 16.67 ms, same timestamp, consumed together by the renderer
+    /// (WO-5) to drive both the face ARKit weights and the skeletal joint
+    /// rotations.
+    pub fn push_kinematic(
+        &self,
+        frame: KinematicTransformFrame,
+    ) -> Result<(), BackpressureError> {
+        self.ring_push(
+            KINEMATIC_CTRL_OFF,
+            KINEMATIC_DATA_OFF,
+            KINEMATIC_SLOTS,
+            RingId::Kinematic,
+            frame,
+        )
+    }
+
+    /// Pops a [`KinematicTransformFrame`] from the kinematic ring.
+    pub fn pop_kinematic(&self) -> Option<KinematicTransformFrame> {
+        self.ring_pop(KINEMATIC_CTRL_OFF, KINEMATIC_DATA_OFF, KINEMATIC_SLOTS)
+    }
+
+    /// Capacity in slots of each ring, as `(audio, blendshape, sh, kinematic)`.
+    pub const fn capacities() -> (usize, usize, usize, usize) {
+        (AUDIO_SLOTS, BLEND_SLOTS, SH_SLOTS, KINEMATIC_SLOTS)
     }
 }
 

@@ -3,5 +3,36 @@ name = "miranda-transport"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = []
+# Enables the full webrtc-rs stack (DTLS/ICE/SRTP) for production NAT
+# traversal. Gated behind a feature because the crate pulls in heavy C++
+# crypto dependencies that are incompatible with the offline dev environment.
+# The binary-frame DataChannel wire format is identical whether the transport
+# layer is a bare axum WebSocket (default) or a real DTLS DataChannel (this
+# feature). Activate for production: cargo build --features webrtc-native
+webrtc-native = ["dep:webrtc"]
+
 [dependencies]
 miranda-core = { path = "../miranda-core" }
+miranda-nodes = { path = "../miranda-nodes" }
+miranda-ipc  = { path = "../miranda-ipc"   }
+
+# Data plane — binary blendshape frames over WebSocket / DataChannel.
+axum             = { version = "0.8.9",   features = ["ws", "macros"] }
+tokio            = { version = "1.53.1",  features = ["full"] }
+tokio-tungstenite = { version = "0.26.2" }
+
+# Serialization (telemetry JSON on the control plane).
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytemuck = "1"
+bytes      = "1"
+
+# Optional: full webrtc-rs stack for DTLS/ICE/SRTP.
+webrtc = { version = "0.8.0", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["full", "test-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+futures-util = "0.3"
