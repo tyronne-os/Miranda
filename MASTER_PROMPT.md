@@ -74,5 +74,10 @@ Then load `.kiro/specs/wo1-workspace-ipc-backbone/requirements.md`, `design.md`,
 - Project overview and architecture: `PROJECT_OVERVIEW.md`
 - Build standards: `.kiro/steering/build-standards.md`
 - Model routing rules: `.kiro/steering/model-routing-protocol.md`
+- **Pipeline 1 (AWS-native): `.kiro/steering/pipeline-1-aws-native.md`** — node-by-node mapping of AWS managed services (Transcribe / Bedrock / Polly / Sumerian Hosts / KVS WebRTC), Polly viseme→BlendshapeFrame adapter spec, and credential access. Read this after WO-1 to understand what each Work Order's Pipeline 1 implementation actually is.
 - All 5 Work Order specs: `.kiro/specs/wo1-*` through `wo5-*`
 - Instant Presence Standard: `eve-ecc-docs/INSTANT-PRESENCE-STANDARD.md`
+
+## About the node labels in THE VANITY
+
+The node graph in THE VANITY's left pane shows labels like "Riva ASR," "Nemotron Agent," "Hive TTS," "Audio2Face-3D," "Omniverse Stream." These are **role labels** — they describe the class of work at each node position, not literal product deployments. For Pipeline 1, each role is filled by an AWS managed service (see the pipeline-1 steering doc). The labels do not change between pipelines; the implementations plugged into them do. Miranda's job is to engineer the harness that makes any implementation pluggable into any role slot — including implementations derived from a theoretical research paper.
