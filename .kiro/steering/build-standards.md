@@ -21,3 +21,18 @@ Per the `aws-pipeline-architect` skill: never leave a GPU instance running idle.
 ## Cross-reference the Kiro skills, don't re-derive their content
 
 `nobility-posh-framework`, `live-avatar-expert`, `aws-pipeline-architect`, and `llamacpp-huggingface-expert` are all active global skills with the science, architecture rationale, and deployment rules already written out. Reference them; don't duplicate or re-research what they already contain.
+
+## Podman: hybrid placement, not blanket containerization
+
+Standardize on rootless Podman for WO-2 (Nemotron routing), WO-4 (WebRTC transport), and WO-5 (React Flow UI) — real portability (identical container runs on this machine and AWS ECR/Fargate), real blast-radius containment (a broken `pip install` inside an agent-driven build destroys a container, not the host), real security benefit (rootless by default).
+
+**WO-1's `miranda-ipc` crate and any direct GPU rendering path stay bare-metal on the EC2 instance**, not containerized — this is the one deliberate exception, made for the sub-150ms latency target. Note on *why*, precisely: a bind-mounted `tmpfs` file (`/dev/shm/miranda_bus`) shares the same physical pages across a container boundary, so `mmap` on it is still genuinely zero-copy — the mount itself is not inherently a latency tax. The real, more modest overhead is container-runtime syscall interception (seccomp filtering, cgroup accounting) at the mmap/futex call sites. That overhead is real but not dramatic — treat "keep WO-1 bare-metal" as the conservative default worth empirically re-measuring once the ring buffer is built and benchmarked, not as settled physics that forecloses ever revisiting it.
+
+## 4. Ephemeral Session Isolation (Podman)
+
+The `miranda-supervisor` crate must manage workflow test execution exclusively via ephemeral, rootless Podman containers:
+
+- Spawn a fresh Podman container per unique testing session — pristine, zero-state, no lingering cache or port conflicts from a prior run.
+- Volume-mount `/dev/shm/miranda_bus` into the session container (`-v /dev/shm/miranda_bus:/dev/shm/miranda_bus:rw`) so the containerized session can still reach the bare-metal IPC bus with zero-copy semantics (see the note above on why this mount doesn't itself cost latency).
+- Enforce strict container lifecycle management: graceful teardown on session end, forced `SIGKILL` + `podman rm -f` on timeout — no zombie processes, no resource starvation across parallel sessions.
+- This is what makes Miranda a true multi-tenant testing lab, not just a renderer: many workflow tests can run in parallel on one EC2 instance, each in its own disposable container, all sharing the one bare-metal IPC core.
