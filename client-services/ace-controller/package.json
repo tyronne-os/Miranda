@@ -2,10 +2,12 @@
   "name": "@eve-ecc/ace-controller",
   "private": true,
   "version": "0.1.0",
-  "description": "Phase E Instant Presence ACE orchestrator (mock → live NIM)",
+  "type": "module",
+  "description": "Phase E Instant Presence ACE orchestrator (mock → live NIM) + WO-2 Pipeline 1 AWS bridge (Transcribe Streaming, Bedrock Converse)",
   "scripts": {
     "dev": "node ./run.mjs",
     "start": "node ./run.mjs",
     "health": "node ./healthcheck.mjs"
-  }
+  },
+  "dependencies": {}
 }

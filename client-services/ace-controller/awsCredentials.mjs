@@ -37,8 +37,13 @@ const VAULT_DB_PATH = "/mnt/NOBILITY_VAULT/amanda-data/db/amanda.db";
  * long-lived handle, and closing eagerly means a vault file that's
  * temporarily locked by another writer doesn't leave this process holding
  * a stale connection.
+ *
+ * Exported (despite this file's name being AWS-specific) so other modules
+ * needing a single vault key — e.g. the NVIDIA NIM key used by the T4
+ * cognitive-core pivot in run.mjs — reuse this exact mechanism rather than
+ * re-implementing the same SQLite read a second time.
  */
-function readVaultKey(provider) {
+export function readVaultKey(provider) {
   const db = new Database(VAULT_DB_PATH, { readonly: true });
   try {
     const row = db

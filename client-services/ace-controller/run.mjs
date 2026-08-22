@@ -10,6 +10,11 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { WebSocketServer } from "./node_ws_shim.mjs";
 import { NODE_INTEL, phonemeTimeline, speak } from "./presence_kit.mjs";
+import { AudioSessionRegistry } from "./audioSession.mjs";
+import { randomId } from "./node_ws_shim.mjs";
+import { TranscribeSessionGuard } from "./transcribeBridge.mjs";
+import { transcribeUtteranceWhisper } from "./whisperBridge.mjs";
+import { readVaultKey } from "./awsCredentials.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const isWin = process.platform === "win32";
@@ -44,6 +49,37 @@ function loadRootEnv() {
 }
 
 loadRootEnv();
+
+// WO-2 T4 pivot (Rule 5 — cognitive-core hot-swap while Bedrock's account is
+// under AWS trust/safety review): nvidiaChat()/nvidiaChatMessages() below
+// already check process.env.NVIDIA_API_KEY, the same pattern .env-loading
+// uses. If it's not already set (by .env or a real shell export), fall back
+// to the AMANDA vault. Two NVIDIA entries exist in the vault
+// ("nvidia" and "nvidiaenterprise") — "nvidiaenterprise" is the one
+// confirmed live/tested for this account, so it's tried first. Never logs
+// the value.
+if (!process.env.NVIDIA_API_KEY && !process.env.NGC_API_KEY && !process.env.NVAPI_KEY) {
+  const vaultNvidiaKey = readVaultKey("nvidiaenterprise") || readVaultKey("nvidia");
+  if (vaultNvidiaKey) {
+    process.env.NVIDIA_API_KEY = vaultNvidiaKey;
+    console.log("[ace-controller] NVIDIA_API_KEY loaded from AMANDA vault");
+  }
+}
+
+// WO-2 second pivot (Rule 5): Amazon Transcribe Streaming is also blocked
+// on this AWS account (same UnrecognizedClientException as Bedrock,
+// reproduced directly against AWS — an account-level issue, not a code
+// defect). Pipeline 1's ASR role slot moves to OpenAI Whisper, whose
+// vaulted key is confirmed live. transcribeBridge.mjs and awsClients stay
+// intact/unused for reactivation once AWS unblocks; see whisperBridge.mjs
+// for the real tradeoff this swap accepts (no partial transcripts).
+if (!process.env.OPENAI_API_KEY) {
+  const vaultOpenAiKey = readVaultKey("openai");
+  if (vaultOpenAiKey) {
+    process.env.OPENAI_API_KEY = vaultOpenAiKey;
+    console.log("[ace-controller] OPENAI_API_KEY loaded from AMANDA vault (Whisper ASR)");
+  }
+}
 
 /**
  * EVE's Phase One persona / instruction file. Editing persona/eve.persona.md
@@ -637,6 +673,25 @@ function startNodeMock() {
   }
 
   const sockets = new Set();
+  // WO-2 T2 — Pipeline 1 audio session state, entirely in-process.
+  const audioSessions = new AudioSessionRegistry();
+  // WO-2 T3 re-entrancy guard — a new speech-start while a transcription
+  // call for that session is still in flight must not let the stale
+  // result win. Reused as-is across the Whisper pivot: the guard's logic
+  // is provider-agnostic (generation counters per session id), so it
+  // needed no changes when the ASR provider swapped.
+  const transcribeGuard = new TranscribeSessionGuard();
+
+  // WO-2 second pivot — Whisper needs only an API key (a plain header),
+  // not a constructed SDK client object, so there is no client-construction
+  // block here the way there was for AWS. Availability is just "does the
+  // vault/.env have OPENAI_API_KEY," checked once at startup so a missing
+  // key fails loudly at boot rather than silently on the first utterance.
+  const whisperAvailable = Boolean(process.env.OPENAI_API_KEY);
+  if (!whisperAvailable) {
+    console.warn("[ace-controller] OPENAI_API_KEY unavailable — Pipeline 1 speech-end will report an error");
+  }
+
   const server = createServer((req, res) => {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
     const origin = req.headers.origin || "";
@@ -1081,6 +1136,9 @@ function startNodeMock() {
   wss.on("connection", (ws) => {
     sockets.add(ws);
     state.clients = sockets.size;
+    // WO-2 T2 — each connection gets its own in-memory audio session,
+    // keyed by a random id (never derived from anything the client sends).
+    const audioSessionId = randomId();
     ws.send(JSON.stringify(snapshot()));
     ws.on("message", async (raw) => {
       try {
@@ -1097,13 +1155,158 @@ function startNodeMock() {
         if (msg.type === "talk" && msg.text) {
           await handleTalk(msg.text, msg.promote !== false);
         }
+        // Accept both control-message names for the end-of-utterance
+        // signal: "speech-end" (this module's original naming) and
+        // "vad_stop" (the browser VAD's emitted event name per the Lead
+        // Architect's T2 spec) — same handler either way, so whichever the
+        // client actually sends, it works without a client/server naming
+        // mismatch blocking the pipeline.
+        if (msg.type === "speech-end" || msg.type === "vad_stop") {
+          const session = audioSessions.get(audioSessionId);
+          const buffered = session ? session.bufferedSamples() : 0;
+          console.log(
+            `[ace-controller] ${msg.type}: session ${audioSessionId} has ${buffered} buffered samples`,
+          );
+
+          if (!whisperAvailable) {
+            ws.send(
+              JSON.stringify({
+                type: "turn-error",
+                error: "OpenAI API key unavailable — check vault credentials",
+              }),
+            );
+            return;
+          }
+          if (!session || buffered === 0) {
+            return; // nothing to transcribe
+          }
+
+          // WO-2 re-entrancy: a new speech-end for this session supersedes
+          // any still-in-flight call from a previous one.
+          const myToken = transcribeGuard.begin(audioSessionId);
+          const t0 = Date.now();
+          const samples = session.drain();
+
+          // DOUBLE STRATEGIC PIVOT (Rule 5) — both AWS legs of Pipeline 1
+          // are account-locked on this new AWS account, confirmed by
+          // reproducing UnrecognizedClientException directly against AWS
+          // outside this server (Bedrock's Converse API, and Transcribe
+          // Streaming at every payload size tested) — not a code defect.
+          // bedrockRouter.mjs and transcribeBridge.mjs are both left
+          // completely intact, unused, for reactivation once AWS clears:
+          //   - "Nemotron Agent" cognitive-core slot: Bedrock -> NVIDIA NIM
+          //     (nvidiaChat/nvidiaChatMessages, already live for /v1/talk)
+          //   - "Riva ASR" slot: Amazon Transcribe Streaming -> OpenAI
+          //     Whisper REST (whisperBridge.mjs)
+          // Real accepted tradeoff from the Whisper swap: no partial
+          // transcripts. transcribeGuard.isCurrent() checks below are kept
+          // anyway — they still guard against a stale FINAL result racing
+          // a newer speech-end, which can happen with any single-shot ASR
+          // call, not just the streaming one this replaced.
+          let transcribeResult;
+          try {
+            transcribeResult = await transcribeUtteranceWhisper({
+              samples,
+              sampleRateHz: 16_000,
+              apiKey: process.env.OPENAI_API_KEY,
+            });
+          } catch (err) {
+            transcribeResult = { text: "", error: err?.message || String(err) };
+          }
+          const tTranscribeFinal = Date.now() - t0;
+
+          if (!transcribeGuard.isCurrent(audioSessionId, myToken)) {
+            console.log(
+              `[ace-controller] session ${audioSessionId}: dropping stale turn result (superseded by newer speech-end)`,
+            );
+            return;
+          }
+
+          if (transcribeResult.error) {
+            console.warn(`[ace-controller] session ${audioSessionId} transcribe failed: ${transcribeResult.error}`);
+            ws.send(JSON.stringify({ type: "turn-error", error: transcribeResult.error }));
+            return;
+          }
+
+          const transcript = transcribeResult.text;
+          if (!transcript.trim()) {
+            return; // silence or unintelligible — no turn to complete
+          }
+
+          const nvidiaResult = await nvidiaChat(transcript);
+          const tTurnComplete = Date.now() - t0;
+
+          if (!transcribeGuard.isCurrent(audioSessionId, myToken)) {
+            console.log(
+              `[ace-controller] session ${audioSessionId}: dropping stale NVIDIA result (superseded by newer speech-end)`,
+            );
+            return;
+          }
+
+          if (!nvidiaResult.ok) {
+            console.warn(`[ace-controller] session ${audioSessionId} NVIDIA chat failed: ${nvidiaResult.error}`);
+            ws.send(JSON.stringify({ type: "turn-error", error: nvidiaResult.error || "NVIDIA chat failed" }));
+            return;
+          }
+
+          const result = {
+            transcript,
+            reply: nvidiaResult.reply,
+            modelId: nvidiaResult.model,
+            timestamps: { tRingWrite: 0, tTranscribeFinal, tTurnComplete },
+          };
+
+          console.log(
+            `[ace-controller] session ${audioSessionId} TurnComplete (Whisper -> NVIDIA NIM): ` +
+              `transcript=${JSON.stringify(result.transcript)} reply=${JSON.stringify(result.reply)} ` +
+              `model=${result.modelId} timestamps=${JSON.stringify(result.timestamps)}`,
+          );
+
+          // Mirror handleTalk's viseme broadcast so Pipeline 1's response
+          // drives EVE's mouth the same way /v1/talk already does.
+          const { frames, durationMs } = phonemeTimeline(result.reply);
+          broadcast({
+            type: "visemes",
+            source: "pipeline-1",
+            tMediaMs: Date.now() - state.startedAt,
+            durationMs,
+            frames,
+          });
+
+          ws.send(
+            JSON.stringify({
+              type: "turn-complete",
+              transcript: result.transcript,
+              reply: result.reply,
+              modelId: result.modelId,
+              timestamps: result.timestamps,
+            }),
+          );
+        }
       } catch {
         /* ignore */
+      }
+    });
+    // WO-2 T2 — binary frames are raw PCM audio (Float32, 16 kHz mono),
+    // never anything else on this connection. Accumulate in-process; never
+    // touch /dev/shm/miranda_bus here (see Architectural resolution #2 in
+    // .kiro/specs/wo2-acoustic-ingress-routing/tasks.md).
+    ws.on("binary", (buf) => {
+      try {
+        const session = audioSessions.getOrCreate(audioSessionId);
+        const sampleCount = session.pushFrame(buf);
+        console.log(
+          `[ace-controller] audio frame: session ${audioSessionId} +${sampleCount} samples ` +
+            `(total buffered: ${session.bufferedSamples()})`,
+        );
+      } catch (err) {
+        console.warn(`[ace-controller] bad audio frame from ${audioSessionId}: ${err?.message || err}`);
       }
     });
     ws.on("close", () => {
       sockets.delete(ws);
       state.clients = sockets.size;
+      audioSessions.remove(audioSessionId);
     });
   });
 

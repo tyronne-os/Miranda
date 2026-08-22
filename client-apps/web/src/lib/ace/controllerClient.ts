@@ -201,6 +201,24 @@ class AceControllerClient {
         }
     }
 
+    /**
+     * WO-2 T2 — sends one raw PCM audio frame (Float32, 16 kHz mono) over
+     * the existing WebSocket as a binary message. Silently no-ops if the
+     * link isn't open yet; MicCapture is expected to check `linkState`
+     * before starting capture, but a dropped frame here must never throw
+     * inside the audio callback.
+     */
+    sendAudioFrame(samples: Float32Array) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        this.ws.send(samples.buffer);
+    }
+
+    /** WO-2 T2 — tells ace-controller's in-process buffer to hand off (T3: to Transcribe). */
+    signalSpeechEnd() {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        this.ws.send(JSON.stringify({ type: "speech-end" }));
+    }
+
     async setStage(stage: PresenceStage): Promise<AceSnapshot | null> {
         try {
             const res = await fetch(`${httpBase()}/v1/stage`, {

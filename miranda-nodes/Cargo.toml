@@ -6,3 +6,17 @@ edition.workspace = true
 [dependencies]
 miranda-core = { path = "../miranda-core" }
 miranda-ipc = { path = "../miranda-ipc" }
+glam = "0.29"
+wide = "0.7"
+# `small_rng` gives SmallRng (xoshiro-based): allocation-free after
+# construction, so it is safe to call inside the 60 FPS loop, and seedable
+# so the oscillators' statistical properties can be tested deterministically
+# rather than flakily. Deliberately not the default StdRng (ChaCha), which is
+# cryptographic overkill for animation jitter.
+rand = { version = "0.8", default-features = false, features = ["small_rng", "std", "std_rng"] }
+# Real Perlin-noise generator for T3's micro-saccade oscillator. `wide`
+# (SIMD lanes) and `glam` (vector/matrix math) are general-purpose numeric
+# crates, neither of which implements Perlin noise itself — reaching for
+# them alone for T3 would mean hand-rolling a Perlin function this
+# well-established crate already provides correctly.
+noise = "0.9"

@@ -11,26 +11,34 @@ function acceptKey(key) {
   return createHash("sha1").update(key + GUID).digest("base64");
 }
 
-function encodeText(str) {
-  const payload = Buffer.from(str, "utf8");
+/** Build a single-frame WS header for the given opcode + payload length. */
+function encodeFrame(opcode, payload) {
   const len = payload.length;
   let header;
   if (len < 126) {
     header = Buffer.alloc(2);
-    header[0] = 0x81;
+    header[0] = 0x80 | opcode;
     header[1] = len;
   } else if (len < 65536) {
     header = Buffer.alloc(4);
-    header[0] = 0x81;
+    header[0] = 0x80 | opcode;
     header[1] = 126;
     header.writeUInt16BE(len, 2);
   } else {
     header = Buffer.alloc(10);
-    header[0] = 0x81;
+    header[0] = 0x80 | opcode;
     header[1] = 127;
     header.writeBigUInt64BE(BigInt(len), 2);
   }
   return Buffer.concat([header, payload]);
+}
+
+function encodeText(str) {
+  return encodeFrame(0x1, Buffer.from(str, "utf8"));
+}
+
+function encodeBinary(buf) {
+  return encodeFrame(0x2, buf);
 }
 
 function decodeFrames(buffer) {
@@ -66,6 +74,11 @@ function decodeFrames(buffer) {
       messages.push({ type: "ping", data: payload });
     } else if (opcode === 0x1) {
       messages.push({ type: "text", data: payload.toString("utf8") });
+    } else if (opcode === 0x2) {
+      // Binary frame — WO-2 T2 uses this for raw PCM audio from the browser.
+      // Copy out of the shared read buffer since `payload` is a subarray
+      // view that gets sliced/reused as more data arrives.
+      messages.push({ type: "binary", data: Buffer.from(payload) });
     }
   }
   return { messages, rest: buffer.subarray(offset) };
@@ -83,6 +96,7 @@ export class WebSocket extends EventEmitter {
       this._buf = rest;
       for (const m of messages) {
         if (m.type === "text") this.emit("message", m.data);
+        if (m.type === "binary") this.emit("binary", m.data);
         if (m.type === "close") {
           this.readyState = 3;
           this.emit("close");
@@ -105,6 +119,11 @@ export class WebSocket extends EventEmitter {
   send(data) {
     if (this.readyState !== 1) return;
     this.socket.write(encodeText(String(data)));
+  }
+
+  sendBinary(buf) {
+    if (this.readyState !== 1) return;
+    this.socket.write(encodeBinary(Buffer.isBuffer(buf) ? buf : Buffer.from(buf)));
   }
 
   close() {

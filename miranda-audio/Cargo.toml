@@ -6,3 +6,4 @@ edition.workspace = true
 [dependencies]
 miranda-core = { path = "../miranda-core" }
 miranda-ipc = { path = "../miranda-ipc" }
+cpal = "0.15"

@@ -23,6 +23,172 @@ pub const BLENDSHAPE_COUNT: usize = 52;
 /// renderer (WO-5) to relight EVE dynamically.
 pub const SH_COEFF_COUNT: usize = 9;
 
+/// Canonical ARKit-52 blend shape channel indices — **the single source of
+/// truth for this project.**
+///
+/// # Why this module exists
+///
+/// Before it, three mutually incompatible index schemes were circulating in
+/// this repo's own documentation:
+///
+/// - Apple's canonical `ARFaceAnchor.BlendShapeLocation` serialization
+///   order (`jawOpen` = 17, `mouthClose` = 18, `eyeBlinkRight` = 7)
+/// - `.kiro/steering/pipeline-1-aws-native.md`'s viseme table
+///   (`jawOpen` = #0, `mouthClose` = #19, `mouthFunnel` = #22,
+///   `tongueOut` = #51)
+/// - WO-3's own task directive (`eyeBlinkLeft` = 0, `eyeBlinkRight` = 1,
+///   `eyeSquintLeft` = 18)
+///
+/// Those cannot all be correct, and a wrong blend shape index is the
+/// nastiest class of bug in this subsystem: it compiles, it passes any
+/// test that only checks value ranges, and it fails *only* as a wrong
+/// muscle moving on EVE's face. Exactly the silent-failure profile the
+/// project's CAT-5 tier exists to guard against.
+///
+/// This module adopts **Apple's canonical ordering** (the order
+/// `ARFaceAnchor.blendShapes` is conventionally serialized in, and the
+/// order every ARKit-compatible rig and exporter expects). The other two
+/// schemes are superseded. Every table, oscillator, and solver in this
+/// project must reference channels through these constants **by name** —
+/// never by a bare integer literal — so that a mapping mistake becomes a
+/// compile error or an obviously-wrong name at the call site rather than
+/// an invisible off-by-N.
+pub mod arkit {
+    // ---- Left eye (0-6) ----
+    pub const EYE_BLINK_LEFT: usize = 0;
+    pub const EYE_LOOK_DOWN_LEFT: usize = 1;
+    pub const EYE_LOOK_IN_LEFT: usize = 2;
+    pub const EYE_LOOK_OUT_LEFT: usize = 3;
+    pub const EYE_LOOK_UP_LEFT: usize = 4;
+    pub const EYE_SQUINT_LEFT: usize = 5;
+    pub const EYE_WIDE_LEFT: usize = 6;
+
+    // ---- Right eye (7-13) ----
+    pub const EYE_BLINK_RIGHT: usize = 7;
+    pub const EYE_LOOK_DOWN_RIGHT: usize = 8;
+    pub const EYE_LOOK_IN_RIGHT: usize = 9;
+    pub const EYE_LOOK_OUT_RIGHT: usize = 10;
+    pub const EYE_LOOK_UP_RIGHT: usize = 11;
+    pub const EYE_SQUINT_RIGHT: usize = 12;
+    pub const EYE_WIDE_RIGHT: usize = 13;
+
+    // ---- Jaw (14-17) ----
+    pub const JAW_FORWARD: usize = 14;
+    pub const JAW_LEFT: usize = 15;
+    pub const JAW_RIGHT: usize = 16;
+    pub const JAW_OPEN: usize = 17;
+
+    // ---- Mouth (18-40) ----
+    pub const MOUTH_CLOSE: usize = 18;
+    pub const MOUTH_FUNNEL: usize = 19;
+    pub const MOUTH_PUCKER: usize = 20;
+    pub const MOUTH_LEFT: usize = 21;
+    pub const MOUTH_RIGHT: usize = 22;
+    pub const MOUTH_SMILE_LEFT: usize = 23;
+    pub const MOUTH_SMILE_RIGHT: usize = 24;
+    pub const MOUTH_FROWN_LEFT: usize = 25;
+    pub const MOUTH_FROWN_RIGHT: usize = 26;
+    pub const MOUTH_DIMPLE_LEFT: usize = 27;
+    pub const MOUTH_DIMPLE_RIGHT: usize = 28;
+    pub const MOUTH_STRETCH_LEFT: usize = 29;
+    pub const MOUTH_STRETCH_RIGHT: usize = 30;
+    pub const MOUTH_ROLL_LOWER: usize = 31;
+    pub const MOUTH_ROLL_UPPER: usize = 32;
+    pub const MOUTH_SHRUG_LOWER: usize = 33;
+    pub const MOUTH_SHRUG_UPPER: usize = 34;
+    pub const MOUTH_PRESS_LEFT: usize = 35;
+    pub const MOUTH_PRESS_RIGHT: usize = 36;
+    pub const MOUTH_LOWER_DOWN_LEFT: usize = 37;
+    pub const MOUTH_LOWER_DOWN_RIGHT: usize = 38;
+    pub const MOUTH_UPPER_UP_LEFT: usize = 39;
+    pub const MOUTH_UPPER_UP_RIGHT: usize = 40;
+
+    // ---- Brows (41-45) ----
+    pub const BROW_DOWN_LEFT: usize = 41;
+    pub const BROW_DOWN_RIGHT: usize = 42;
+    pub const BROW_INNER_UP: usize = 43;
+    pub const BROW_OUTER_UP_LEFT: usize = 44;
+    pub const BROW_OUTER_UP_RIGHT: usize = 45;
+
+    // ---- Cheeks (46-48) ----
+    pub const CHEEK_PUFF: usize = 46;
+    pub const CHEEK_SQUINT_LEFT: usize = 47;
+    pub const CHEEK_SQUINT_RIGHT: usize = 48;
+
+    // ---- Nose (49-50) ----
+    pub const NOSE_SNEER_LEFT: usize = 49;
+    pub const NOSE_SNEER_RIGHT: usize = 50;
+
+    // ---- Tongue (51) ----
+    pub const TONGUE_OUT: usize = 51;
+
+    /// All 52 channel names in canonical index order. Index `i` of this
+    /// array is the name of channel `i` — used for diagnostics, telemetry
+    /// labels, and the tests that prove this module is internally
+    /// consistent.
+    pub const CHANNEL_NAMES: [&str; super::BLENDSHAPE_COUNT] = [
+        "eyeBlinkLeft",
+        "eyeLookDownLeft",
+        "eyeLookInLeft",
+        "eyeLookOutLeft",
+        "eyeLookUpLeft",
+        "eyeSquintLeft",
+        "eyeWideLeft",
+        "eyeBlinkRight",
+        "eyeLookDownRight",
+        "eyeLookInRight",
+        "eyeLookOutRight",
+        "eyeLookUpRight",
+        "eyeSquintRight",
+        "eyeWideRight",
+        "jawForward",
+        "jawLeft",
+        "jawRight",
+        "jawOpen",
+        "mouthClose",
+        "mouthFunnel",
+        "mouthPucker",
+        "mouthLeft",
+        "mouthRight",
+        "mouthSmileLeft",
+        "mouthSmileRight",
+        "mouthFrownLeft",
+        "mouthFrownRight",
+        "mouthDimpleLeft",
+        "mouthDimpleRight",
+        "mouthStretchLeft",
+        "mouthStretchRight",
+        "mouthRollLower",
+        "mouthRollUpper",
+        "mouthShrugLower",
+        "mouthShrugUpper",
+        "mouthPressLeft",
+        "mouthPressRight",
+        "mouthLowerDownLeft",
+        "mouthLowerDownRight",
+        "mouthUpperUpLeft",
+        "mouthUpperUpRight",
+        "browDownLeft",
+        "browDownRight",
+        "browInnerUp",
+        "browOuterUpLeft",
+        "browOuterUpRight",
+        "cheekPuff",
+        "cheekSquintLeft",
+        "cheekSquintRight",
+        "noseSneerLeft",
+        "noseSneerRight",
+        "tongueOut",
+    ];
+
+    /// Looks up a channel index by its ARKit name. Returns `None` for an
+    /// unknown name rather than panicking, so a caller parsing an external
+    /// rig manifest can report a clear error instead of aborting.
+    pub fn index_of(name: &str) -> Option<usize> {
+        CHANNEL_NAMES.iter().position(|&n| n == name)
+    }
+}
+
 /// A raw audio chunk from the microphone or a VAD pre-buffer.
 ///
 /// `#[repr(C)]` fixes the memory layout to match the C ABI so this struct is
@@ -152,5 +318,115 @@ mod tests {
         assert_eq!(std::mem::size_of::<AudioChunk>(), 656);
         assert_eq!(std::mem::size_of::<BlendshapeFrame>(), 216);
         assert_eq!(std::mem::size_of::<SphericalHarmonics>(), 48);
+    }
+
+    /// The `arkit` constants and `CHANNEL_NAMES` are two parallel
+    /// representations of the same mapping, so they can drift apart
+    /// silently if edited independently. This test makes that drift a
+    /// build failure: every named constant must point at the array slot
+    /// bearing its own camelCase name.
+    #[test]
+    fn arkit_constants_agree_with_channel_names() {
+        use arkit::*;
+        let pairs: &[(usize, &str)] = &[
+            (EYE_BLINK_LEFT, "eyeBlinkLeft"),
+            (EYE_LOOK_DOWN_LEFT, "eyeLookDownLeft"),
+            (EYE_LOOK_IN_LEFT, "eyeLookInLeft"),
+            (EYE_LOOK_OUT_LEFT, "eyeLookOutLeft"),
+            (EYE_LOOK_UP_LEFT, "eyeLookUpLeft"),
+            (EYE_SQUINT_LEFT, "eyeSquintLeft"),
+            (EYE_WIDE_LEFT, "eyeWideLeft"),
+            (EYE_BLINK_RIGHT, "eyeBlinkRight"),
+            (EYE_LOOK_DOWN_RIGHT, "eyeLookDownRight"),
+            (EYE_LOOK_IN_RIGHT, "eyeLookInRight"),
+            (EYE_LOOK_OUT_RIGHT, "eyeLookOutRight"),
+            (EYE_LOOK_UP_RIGHT, "eyeLookUpRight"),
+            (EYE_SQUINT_RIGHT, "eyeSquintRight"),
+            (EYE_WIDE_RIGHT, "eyeWideRight"),
+            (JAW_FORWARD, "jawForward"),
+            (JAW_LEFT, "jawLeft"),
+            (JAW_RIGHT, "jawRight"),
+            (JAW_OPEN, "jawOpen"),
+            (MOUTH_CLOSE, "mouthClose"),
+            (MOUTH_FUNNEL, "mouthFunnel"),
+            (MOUTH_PUCKER, "mouthPucker"),
+            (MOUTH_LEFT, "mouthLeft"),
+            (MOUTH_RIGHT, "mouthRight"),
+            (MOUTH_SMILE_LEFT, "mouthSmileLeft"),
+            (MOUTH_SMILE_RIGHT, "mouthSmileRight"),
+            (MOUTH_FROWN_LEFT, "mouthFrownLeft"),
+            (MOUTH_FROWN_RIGHT, "mouthFrownRight"),
+            (MOUTH_DIMPLE_LEFT, "mouthDimpleLeft"),
+            (MOUTH_DIMPLE_RIGHT, "mouthDimpleRight"),
+            (MOUTH_STRETCH_LEFT, "mouthStretchLeft"),
+            (MOUTH_STRETCH_RIGHT, "mouthStretchRight"),
+            (MOUTH_ROLL_LOWER, "mouthRollLower"),
+            (MOUTH_ROLL_UPPER, "mouthRollUpper"),
+            (MOUTH_SHRUG_LOWER, "mouthShrugLower"),
+            (MOUTH_SHRUG_UPPER, "mouthShrugUpper"),
+            (MOUTH_PRESS_LEFT, "mouthPressLeft"),
+            (MOUTH_PRESS_RIGHT, "mouthPressRight"),
+            (MOUTH_LOWER_DOWN_LEFT, "mouthLowerDownLeft"),
+            (MOUTH_LOWER_DOWN_RIGHT, "mouthLowerDownRight"),
+            (MOUTH_UPPER_UP_LEFT, "mouthUpperUpLeft"),
+            (MOUTH_UPPER_UP_RIGHT, "mouthUpperUpRight"),
+            (BROW_DOWN_LEFT, "browDownLeft"),
+            (BROW_DOWN_RIGHT, "browDownRight"),
+            (BROW_INNER_UP, "browInnerUp"),
+            (BROW_OUTER_UP_LEFT, "browOuterUpLeft"),
+            (BROW_OUTER_UP_RIGHT, "browOuterUpRight"),
+            (CHEEK_PUFF, "cheekPuff"),
+            (CHEEK_SQUINT_LEFT, "cheekSquintLeft"),
+            (CHEEK_SQUINT_RIGHT, "cheekSquintRight"),
+            (NOSE_SNEER_LEFT, "noseSneerLeft"),
+            (NOSE_SNEER_RIGHT, "noseSneerRight"),
+            (TONGUE_OUT, "tongueOut"),
+        ];
+
+        assert_eq!(
+            pairs.len(),
+            BLENDSHAPE_COUNT,
+            "every one of the 52 channels must be covered by this test"
+        );
+
+        for &(idx, name) in pairs {
+            assert_eq!(
+                arkit::CHANNEL_NAMES[idx], name,
+                "constant for {name} points at index {idx}, which is named \
+                 '{}' — the constants and CHANNEL_NAMES have drifted apart",
+                arkit::CHANNEL_NAMES[idx]
+            );
+            assert_eq!(
+                arkit::index_of(name),
+                Some(idx),
+                "index_of({name}) disagrees with its named constant"
+            );
+        }
+    }
+
+    /// No duplicate indices and full coverage of 0..52 — a copy-paste slip
+    /// that gave two channels the same index would otherwise silently mean
+    /// one muscle is unreachable and another is double-driven.
+    #[test]
+    fn arkit_indices_are_a_complete_bijection() {
+        let mut seen = [false; BLENDSHAPE_COUNT];
+        for (i, name) in arkit::CHANNEL_NAMES.iter().enumerate() {
+            assert!(!seen[i], "index {i} listed twice");
+            seen[i] = true;
+            assert!(!name.is_empty(), "channel {i} has an empty name");
+            // Names must be unique too, else index_of() would be ambiguous.
+            let first = arkit::CHANNEL_NAMES.iter().position(|n| n == name).unwrap();
+            assert_eq!(first, i, "duplicate channel name {name:?}");
+        }
+        assert!(seen.iter().all(|&s| s), "not all 52 indices are covered");
+    }
+
+    #[test]
+    fn arkit_index_of_rejects_unknown_names() {
+        assert_eq!(arkit::index_of("notARealChannel"), None);
+        assert_eq!(arkit::index_of(""), None);
+        // Case matters — ARKit names are camelCase and a case-folded match
+        // would let a subtly-wrong manifest through.
+        assert_eq!(arkit::index_of("jawopen"), None);
     }
 }
