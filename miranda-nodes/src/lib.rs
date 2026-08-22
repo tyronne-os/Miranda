@@ -32,4 +32,5 @@ pub mod compositor;
 pub mod dispatcher;
 pub mod gaze;
 pub mod solver;
+pub mod verify;
 pub mod viseme;
