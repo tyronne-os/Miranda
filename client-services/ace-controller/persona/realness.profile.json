@@ -1,0 +1,83 @@
+{
+  "$comment": "ECC-5 Realness Profile — the fine-tuning surface for how human she feels. Every value here is a dial an operator can turn from the Persona Lab without touching code. Frontend motion and viseme layers read this live.",
+  "version": 1,
+  "name": "Phase One · Baseline Human",
+
+  "breath": {
+    "$comment": "Diaphragm. rateHz 0.20-0.28 is resting adult. amplitudeModHz creates the irregularity that stops it reading as a metronome — the single biggest tell of a fake idle.",
+    "rateHz": 0.14,
+    "amplitudeModHz": 0.031,
+    "amplitudeModDepth": 0.34,
+    "travelPx": 2.3,
+    "scaleDepth": 0.0042,
+    "luminanceDepth": 0.006
+  },
+
+  "sway": {
+    "$comment": "Slow postural drift on offset phases so no two axes share a period. Humans never hold still and never oscillate cleanly.",
+    "rateHz": 0.053,
+    "rotationDeg": 0.38,
+    "driftRateHz": 0.023,
+    "driftPx": 1.5
+  },
+
+  "attention": {
+    "$comment": "Micro attention shifts — the saccade analogue. NVIDIA Maxine Audio2Face-2D calls this 'lookaway' and ships lookaway_interval_min 90f + range 240f, i.e. 3.0-11.0s at 30fps. Our window sits inside theirs, independently derived and then confirmed against their defaults.",
+    "minIntervalMs": 4200,
+    "maxIntervalMs": 11000,
+    "durationMs": 300,
+    "travelPx": 3.2,
+    "rotationDeg": 0.5
+  },
+
+  "blink": {
+    "$comment": "IMPLEMENTED as a masked eyelid sweep pinned to her eye positions — not a renderer output, but a real gesture: fast close, slower release, randomized interval, occasional double-blink. Values mirror NVIDIA Maxine A2F-2D blink_frequency (0-120bpm) and blink_duration (2-150 frames) so the handoff to the real renderer is a wiring job, not a redesign.",
+    "implemented": true,
+    "method": "masked eyelid sweep (CSS layer) — upgrade path is A2F-2D blink_frequency",
+    "frequencyBpm": 14,
+    "durationFrames": 10
+  },
+
+  "depth": {
+    "$comment": "Parallax layering. A flat portrait moved as one rectangle is the Ken Burns effect, not a person — the frame reads as a photograph being panned. The backdrop counter-moves and blurs to become depth of field; the hair carries its own mass and arrives late behind the skull.",
+    "backdropCounterX": 1.9,
+    "backdropCounterY": 1.35,
+    "backdropScale": 1.085,
+    "hairLagAlpha": 0.055,
+    "hairOvershoot": 0.9,
+    "hairOpacity": 0.62
+  },
+
+  "a2f2d": {
+    "$comment": "NVIDIA Maxine Audio2Face-2D ('Speech Live Portrait') payload, pre-tuned. Sent verbatim the moment the NIM is reachable on cloud GPU — hosted endpoints returned 404 on 2026-08-09, so this is container-only for now. Names and ranges are NVIDIA's, not ours.",
+    "model_selection": "MODEL_SELECTION_QUALITY",
+    "blink_frequency": 14,
+    "blink_duration": 10,
+    "enable_lookaway": 1,
+    "lookaway_max_offset": 12,
+    "lookaway_interval_min": 126,
+    "lookaway_interval_range": 204,
+    "head_pose_mode": "retain_portrait_pose",
+    "head_pose_multiplier": 0.55,
+    "mouth_expression_multiplier": 1.4
+  },
+
+  "speech": {
+    "$comment": "Talk pulse. jawGain maps ARKit jawOpen onto portrait displacement. coarticulationMs is the crossfade between adjacent visemes — 0 makes the mouth snap between shapes, which is the classic puppet tell. 45-70ms matches human articulator travel.",
+    "jawGain": 1.4,
+    "energyGain": 0.4,
+    "attack": 0.22,
+    "liftPx": 1.6,
+    "scaleDepth": 0.011,
+    "luminanceDepth": 0.028,
+    "coarticulationMs": 55,
+    "visemeIntensity": 1.0
+  },
+
+  "thresholds": {
+    "$comment": "ECC-5 scoring gates. Composite below backToLab sends her back for re-engineering — no shipping on vibes.",
+    "backToLab": 70,
+    "shippable": 85,
+    "uncannyValleyTarget": 2.0
+  }
+}

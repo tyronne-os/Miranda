@@ -1,0 +1,1608 @@
+﻿/* Instant Presence Standard — component surfaces */
+
+button { border: none; background: none; }
+
+.pane-fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cortex-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-size: 12px;
+  transition: 0.15s ease;
+}
+
+.stage-chip em {
+  font-style: normal;
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.stage-chip:hover {
+  border-color: var(--accent-line);
+  color: var(--text);
+}
+
+.stage-chip.active {
+  border-color: rgba(77, 179, 255, 0.65);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 22px rgba(77, 179, 255, 0.16);
+}
+
+.stage-chip.target {
+  border-color: rgba(245, 185, 66, 0.55);
+  color: var(--warn);
+}
+
+.warm-meter,
+.live-meter {
+  margin-left: 0;
+  position: relative;
+  min-width: 118px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.warm-meter {
+  margin-left: auto;
+}
+
+.warm-meter-fill,
+.live-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, rgba(47, 143, 255, 0.45), rgba(77, 179, 255, 0.75));
+  transition: width 0.2s ease;
+}
+
+.live-meter.tone-good .live-meter-fill {
+  background: linear-gradient(90deg, rgba(61, 222, 154, 0.35), rgba(61, 222, 154, 0.72));
+}
+
+.live-meter.tone-warn .live-meter-fill {
+  background: linear-gradient(90deg, rgba(245, 185, 66, 0.35), rgba(245, 185, 66, 0.75));
+}
+
+.live-meter.tone-bad .live-meter-fill {
+  background: linear-gradient(90deg, rgba(255, 107, 122, 0.35), rgba(255, 107, 122, 0.78));
+}
+
+.live-meter.tone-neutral .live-meter-fill {
+  background: linear-gradient(90deg, rgba(47, 143, 255, 0.4), rgba(77, 179, 255, 0.7));
+}
+
+.warm-meter span,
+.live-meter span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--text);
+  font-family: var(--mono);
+  z-index: 1;
+  letter-spacing: 0.02em;
+}
+
+.live-meter-row {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cortex-body {
+  position: relative;
+  background:
+    radial-gradient(900px 420px at 18% 0%, rgba(26, 140, 255, 0.1), transparent 62%),
+    radial-gradient(700px 380px at 92% 88%, rgba(61, 180, 255, 0.07), transparent 55%),
+    #010203;
+}
+
+.cortex-body .react-flow__background {
+  background: transparent !important;
+}
+
+/* Force React Flow path strokes — class alone is often overridden */
+.cortex-body .react-flow__edge-path,
+.cortex-body .react-flow__connection-path {
+  stroke: var(--edge-idle) !important;
+  stroke-width: 1.85 !important;
+  stroke-opacity: 1 !important;
+}
+
+.cortex-body .react-flow__edge.ace-edge.is-active .react-flow__edge-path,
+.cortex-body .react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--edge-live) !important;
+  stroke-width: 2.35 !important;
+  filter: drop-shadow(0 0 6px rgba(61, 180, 255, 0.75));
+}
+
+.cortex-body .react-flow__edge.kind-audio.is-active .react-flow__edge-path {
+  stroke: #4ec4ff !important;
+}
+.cortex-body .react-flow__edge.kind-blendshape.is-active .react-flow__edge-path {
+  stroke: #8eb6ff !important;
+}
+.cortex-body .react-flow__edge.kind-pixel.is-active .react-flow__edge-path {
+  stroke: #f0c14d !important;
+}
+.cortex-body .react-flow__edge.kind-control.is-active .react-flow__edge-path {
+  stroke: #3db4ff !important;
+}
+.cortex-body .react-flow__edge.kind-clock .react-flow__edge-path {
+  stroke-dasharray: 5 4;
+}
+
+/* Select-only education card — hidden until a node is chosen */
+.ace-node-tooltip {
+  z-index: 20;
+  max-width: min(320px, calc(100vw - 28px));
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  pointer-events: none;
+}
+
+.ace-node-tooltip-dock {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  left: auto;
+  top: auto;
+}
+
+.ace-node-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ace-node-tooltip-inner {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
+    rgba(11, 14, 20, 0.94);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(77, 179, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ace-node-tooltip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ace-node-tooltip-stage {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-right: auto;
+}
+
+.ace-node-tooltip-close {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.ace-node-tooltip-close:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+
+.ace-node-tooltip-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ace-node-tooltip-role {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--accent);
+  line-height: 1.35;
+}
+
+.ace-node-tooltip-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ace-node-tooltip-stats strong {
+  color: var(--text);
+  font-weight: 650;
+  margin-right: 3px;
+}
+
+.ace-node-tooltip-intro {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ace-node-tooltip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ace-node-tooltip-tag {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--spark-line);
+  background: var(--spark-soft);
+  color: var(--spark);
+}
+
+.cortex-body .react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.cortex-body .react-flow__controls {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.cortex-body .react-flow__controls-button {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--panel-border);
+  fill: var(--muted);
+}
+
+/* Uniform node chrome — same shell for every ACE node (ref graph language) */
+.ace-node {
+  width: 168px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--node-border);
+  background:
+    linear-gradient(180deg, rgba(61, 180, 255, 0.08), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(61, 180, 255, 0.08) inset,
+    0 0 18px rgba(26, 140, 255, 0.08);
+  font-size: 11px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.ace-node.is-selected {
+  border-color: rgba(61, 180, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(61, 180, 255, 0.45),
+    0 0 0 1px rgba(240, 193, 77, 0.12) inset,
+    0 14px 40px rgba(26, 140, 255, 0.28),
+    0 0 36px rgba(61, 180, 255, 0.28);
+}
+
+.ace-node.is-hovered:not(.is-selected) {
+  border-color: rgba(61, 180, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(61, 180, 255, 0.28),
+    0 16px 36px rgba(26, 140, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Plane no longer recolors the whole card — keeps oval uniform */
+.ace-node.control,
+.ace-node.data {
+  border-color: var(--node-border);
+}
+
+/* Health only tints a hairline — never breaks node family look */
+.ace-node.health-hot {
+  border-color: rgba(61, 222, 154, 0.55);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(61, 222, 154, 0.14);
+}
+.ace-node.health-warming {
+  border-color: rgba(245, 185, 66, 0.55);
+}
+.ace-node.health-degraded,
+.ace-node.health-error {
+  border-color: rgba(255, 107, 122, 0.55);
+}
+.ace-node.health-ready {
+  border-color: rgba(61, 180, 255, 0.55);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(61, 180, 255, 0.16);
+}
+
+.ace-node-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ace-glyph {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(77, 179, 255, 0.28);
+  box-shadow: 0 0 12px rgba(77, 179, 255, 0.1);
+}
+
+.ace-plane-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.ace-plane-tag.control,
+.ace-plane-tag.data {
+  color: var(--muted);
+}
+
+.ace-node-label {
+  font-weight: 650;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.ace-node-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.ace-health {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.ace-health.hot,
+.ace-health.ready { color: var(--ok); }
+.ace-health.warming { color: var(--warn); }
+.ace-health.degraded,
+.ace-health.error { color: var(--danger); }
+.ace-health.cold { color: var(--faint); }
+
+.ace-load {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.ace-load-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 8px rgba(77, 179, 255, 0.35);
+  transition: width 0.2s ease;
+}
+
+.ace-node-msg {
+  color: var(--faint);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ace-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--accent) !important;
+  border: 2px solid #010203 !important;
+  box-shadow: 0 0 12px rgba(61, 180, 255, 0.85) !important;
+}
+
+/* Graph edges — electric blue family like the reference */
+.ace-edge {
+  stroke: var(--edge-idle) !important;
+  stroke-width: 1.85 !important;
+}
+.ace-edge.is-active {
+  stroke: var(--edge-live) !important;
+  stroke-width: 2.35 !important;
+  filter: drop-shadow(0 0 6px rgba(61, 180, 255, 0.7));
+}
+.ace-edge.kind-audio.is-active { stroke: #4ec4ff !important; }
+.ace-edge.kind-blendshape.is-active { stroke: #8eb6ff !important; }
+.ace-edge.kind-pixel.is-active { stroke: #f0c14d !important; }
+.ace-edge.kind-control.is-active { stroke: #3db4ff !important; }
+.ace-edge.kind-clock { stroke-dasharray: 5 4; }
+
+.react-flow__edge-textbg { fill: #010203 !important; }
+.react-flow__edge-text { fill: var(--accent-3) !important; font-size: 9px !important; }
+
+.cortex-inspector {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.inspector-block { min-width: 0; }
+
+.inspector-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+
+.inspector-value {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inspector-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.warn-block .inspector-meta { color: var(--warn); }
+
+.studio-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+}
+
+.studio-main {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  border-right: 1px solid var(--panel-border);
+}
+
+.eve-viewport {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(500px 300px at 50% 40%, rgba(47, 143, 255, 0.08), transparent 60%),
+    linear-gradient(180deg, #0c1016, #040506 70%);
+  display: grid;
+  place-items: center;
+}
+
+.eve-viewport-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 45%, black 20%, transparent 75%);
+}
+
+.eve-stage-glow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(77, 179, 255, 0.2), transparent 70%);
+  filter: blur(8px);
+  transition: opacity 0.2s ease;
+}
+
+.eve-viewport.stage-L1 .eve-stage-glow {
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.22), transparent 70%);
+}
+
+.eve-viewport.stage-L2 .eve-stage-glow {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.2), transparent 70%);
+}
+
+.eve-ov-scan {
+  position: absolute;
+  inset: 12% 18%;
+  border: 1px dashed rgba(251, 191, 36, 0.35);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 14px;
+  pointer-events: none;
+  animation: ovPulse 2.4s ease-in-out infinite;
+}
+
+.eve-ov-scan span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.eve-ov-scan em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+@keyframes ovPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+.eve-figure {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.eve-halo {
+  position: absolute;
+  top: 8%;
+  width: min(72vw, 420px);
+  height: min(72vw, 420px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(77, 179, 255, 0.16), transparent 68%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Photoreal still frame only — no drawn face / bust geometry */
+.eve-photo-frame {
+  position: relative;
+  z-index: 1;
+  width: min(52vh, 340px);
+  aspect-ratio: 3 / 4;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  background: #050608;
+}
+
+.eve-viewport.still-closeup .eve-photo-frame {
+  width: min(58vh, 380px);
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+}
+
+.eve-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.eve-viewport.still-closeup .eve-photo {
+  object-position: center 22%;
+}
+
+.eve-photo-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 42%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 28%, transparent 70%, rgba(0, 0, 0, 0.35));
+}
+
+.eve-photo-frame.talking {
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(77, 179, 255, 0.35),
+    0 0 36px rgba(77, 179, 255, 0.18);
+}
+
+.eve-talk-ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(77, 179, 255, 0.45);
+  box-shadow: inset 0 0 24px rgba(77, 179, 255, 0.12);
+  pointer-events: none;
+  animation: talkRing 1.1s ease-in-out infinite;
+}
+
+@keyframes talkRing {
+  0%, 100% { opacity: 0.45; transform: scale(0.995); }
+  50% { opacity: 0.95; transform: scale(1); }
+}
+
+.eve-nameplate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+}
+
+.eve-nameplate strong {
+  letter-spacing: 0.28em;
+  font-size: 12px;
+}
+
+.eve-nameplate span {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* Face-first Live Studio chrome — controls stay on edges, not over the face */
+.studio-hero {
+  position: relative;
+  background: #040506;
+}
+
+.studio-stage-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-stage-area .eve-viewport {
+  flex: 1;
+  min-height: 0;
+}
+
+.studio-float-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.studio-edge {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio-edge.left { left: 10px; align-items: flex-start; }
+.studio-edge.right { right: 10px; align-items: flex-end; }
+
+.edge-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(11, 13, 16, 0.82);
+  color: var(--muted);
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+  transition: 0.15s ease;
+}
+
+.edge-tab:hover,
+.edge-tab.active {
+  color: var(--accent);
+  border-color: rgba(77, 179, 255, 0.45);
+  background: rgba(15, 23, 32, 0.92);
+}
+
+.edge-flyout {
+  position: absolute;
+  top: 0;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: rgba(11, 13, 16, 0.96);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 7;
+}
+
+.edge-flyout.left { left: calc(100% + 8px); }
+.edge-flyout.right { right: calc(100% + 8px); }
+
+.edge-flyout-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 2px;
+}
+
+.edge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  text-align: left;
+}
+
+.edge-item strong { font-size: 12px; color: var(--text); font-weight: 650; }
+.edge-item small { font-size: 10px; color: var(--faint); }
+.edge-item:hover,
+.edge-item.active {
+  border-color: rgba(77, 179, 255, 0.35);
+  background: rgba(77, 179, 255, 0.08);
+}
+
+.edge-flyout-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.edge-wide { width: 100%; justify-content: center; }
+
+.edge-hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: var(--faint);
+  line-height: 1.4;
+}
+
+.studio-drawer-scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 20;
+}
+
+.studio-drawer-scrim.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.studio-admin-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 92%);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  background: rgba(11, 13, 16, 0.98);
+  border-left: 1px solid var(--panel-border);
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.45);
+  transform: translateX(104%);
+  transition: transform 0.2s ease;
+}
+
+.studio-admin-drawer.open { transform: translateX(0); }
+
+.studio-admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.studio-admin-head strong {
+  display: block;
+  font-size: 13px;
+}
+
+.studio-admin-head span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.studio-admin-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.admin-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.drawer-toggle { margin-left: 0; }
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.studio-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.22);
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 12px;
+  transition: 0.15s ease;
+  user-select: none;
+}
+
+.ctrl-btn:hover {
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.ctrl-btn.on {
+  color: var(--accent);
+  border-color: rgba(77, 179, 255, 0.4);
+  background: rgba(77, 179, 255, 0.08);
+}
+
+.ctrl-btn.talk {
+  min-width: 132px;
+  justify-content: center;
+  font-weight: 650;
+}
+
+.ctrl-btn.talk.active {
+  color: #042f2e;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  box-shadow: 0 0 24px rgba(77, 179, 255, 0.35);
+}
+
+.ctrl-btn.primary {
+  color: var(--accent-2);
+  border-color: rgba(47, 143, 255, 0.4);
+}
+
+.auto-warm {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.auto-warm input { accent-color: var(--accent); }
+
+.stage-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--panel-border);
+}
+
+.stage-rail-btn {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border-right: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--muted);
+}
+
+.stage-rail-btn:last-child { border-right: none; }
+.stage-rail-btn span { font-weight: 700; letter-spacing: 0.08em; font-size: 12px; }
+.stage-rail-btn small { font-size: 10px; color: var(--faint); }
+.stage-rail-btn.active { background: rgba(77, 179, 255, 0.08); color: var(--accent); }
+.stage-rail-btn.active small { color: rgba(77, 179, 255, 0.75); }
+
+.studio-side {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.side-card {
+  padding: 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.side-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+
+.side-card p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.contract-list {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contract-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.clock-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.clock-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clock-grid span { font-size: 10px; }
+.clock-grid strong { font-size: 13px; font-weight: 650; }
+
+.blend-meter {
+  padding: 12px;
+  border-bottom: 1px solid var(--panel-border);
+  flex: 1;
+  min-height: 180px;
+}
+
+.blend-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.blend-meter-head strong {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.blend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.blend-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 34px;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+}
+
+.blend-name {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blend-track {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.blend-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-3), var(--accent));
+  transition: width 0.08s linear;
+}
+
+.blend-val {
+  text-align: right;
+  color: var(--faint);
+}
+
+.event-strip {
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+  max-width: 55vw;
+}
+
+.event-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex-shrink: 0;
+}
+
+.event-pill.ok i { background: var(--ok); }
+.event-pill.warn i { background: var(--warn); }
+.event-pill.error i { background: var(--danger); }
+
+@media (max-width: 1100px) {
+  .studio-layout { grid-template-columns: 1fr; }
+  .studio-main { border-right: none; }
+  .studio-side {
+    max-height: 220px;
+    border-top: 1px solid var(--panel-border);
+  }
+  .cortex-inspector { grid-template-columns: 1fr; }
+}
+
+/* ── Vanity mirror front + backend admin ─────────────────────────── */
+.eve-viewport.mirror {
+  background:
+    radial-gradient(520px 360px at 50% 42%, rgba(47, 143, 255, 0.05), transparent 62%),
+    linear-gradient(180deg, #07090d 0%, #050608 72%, #040506 100%);
+}
+
+.eve-viewport.mirror .eve-viewport-glow {
+  position: absolute;
+  width: min(70vw, 460px);
+  height: min(70vw, 460px);
+  border-radius: 50%;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(77, 179, 255, 0.14), transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.25s ease, opacity 0.25s ease;
+}
+
+.eve-viewport.mirror.stage-L1 .eve-viewport-glow {
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.16), transparent 70%);
+}
+
+.eve-viewport.mirror.stage-L2 .eve-viewport-glow {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.14), transparent 70%);
+}
+
+.eve-viewport.mirror .eve-figure {
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.eve-viewport.mirror .eve-photo-frame {
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* Ghost backend FAB — corner only, never over face center */
+.studio-backend-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(5, 6, 8, 0.55);
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(10px);
+  transition: 0.18s ease;
+  opacity: 0.55;
+}
+
+.studio-backend-fab:hover,
+.studio-backend-fab:focus-visible,
+.studio-backend-fab.active {
+  opacity: 1;
+  color: var(--accent);
+  border-color: rgba(77, 179, 255, 0.45);
+  background: rgba(8, 12, 18, 0.92);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.studio-backend-fab span {
+  font-weight: 600;
+}
+
+/* Backend admin denser controls */
+.admin-btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-stage-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.admin-stage-item {
+  width: 100%;
+}
+
+.admin-stage-item.target {
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: var(--warn);
+}
+
+.studio-admin-body .side-card:last-child {
+  border-bottom: none;
+}
+
+.studio-admin-body .admin-note {
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.studio-admin-drawer {
+  width: min(360px, 94%);
+}
+
+/* Slim app chrome for vanity measurement */
+.app-header-slim .badge:not(.keep) {
+  /* reserved if class-based later */
+}
+
+@media (max-width: 900px) {
+  .studio-backend-fab span { display: none; }
+  .studio-backend-fab { padding: 10px; }
+}
+
+/* ── UPON LOAD — bottom-corner time-to-presence meter ──
+   Anchored LEFT, over the cortex pane. She is judged on the right and
+   nothing may sit on that glass. */
+.upon-load {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  min-width: 108px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(10px);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.upon-load-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.upon-load-title {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.upon-load-grade {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.upon-load-value {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* Grade colouring — engine time against the <1s Instant Presence contract */
+.upon-load.grade-instant { border-color: rgba(61, 222, 154, 0.5); }
+.upon-load.grade-instant .upon-load-grade { color: var(--ok); background: rgba(61, 222, 154, 0.14); }
+.upon-load.grade-instant .upon-load-value { color: var(--ok); }
+
+.upon-load.grade-pass { border-color: rgba(61, 180, 255, 0.5); }
+.upon-load.grade-pass .upon-load-grade { color: var(--accent); background: var(--accent-soft); }
+.upon-load.grade-pass .upon-load-value { color: var(--accent-3); }
+
+.upon-load.grade-warn { border-color: rgba(245, 185, 66, 0.5); }
+.upon-load.grade-warn .upon-load-grade { color: var(--warn); background: rgba(245, 185, 66, 0.14); }
+.upon-load.grade-warn .upon-load-value { color: var(--warn); }
+
+.upon-load.grade-fail { border-color: rgba(255, 92, 92, 0.55); }
+.upon-load.grade-fail .upon-load-grade { color: #ff5c5c; background: rgba(255, 92, 92, 0.14); }
+.upon-load.grade-fail .upon-load-value { color: #ff5c5c; }
+
+.upon-load.grade-pending .upon-load-grade { color: var(--muted); background: rgba(143, 160, 184, 0.12); }
+
+/* Breakdown — collapsed until hover, so the chrome stays out of her way */
+.upon-load-detail {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 200ms ease, opacity 160ms ease, margin-top 200ms ease;
+  margin-top: 0;
+}
+
+.upon-load:hover .upon-load-detail,
+.upon-load:focus-within .upon-load-detail {
+  max-height: 190px;
+  opacity: 1;
+  margin-top: 7px;
+}
+
+.upon-load-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 10px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.upon-load-row b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.upon-load-sep {
+  height: 1px;
+  background: var(--panel-border);
+  margin: 5px 0;
+}
+
+.upon-load-link {
+  margin-top: 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+/* ── Persona Lab — admin-only character bench ── */
+.persona-editor {
+  width: 100%;
+  resize: vertical;
+  min-height: 190px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: var(--bg-1);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.persona-editor:focus {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.persona-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.persona-actions .ctrl-btn {
+  flex: 1;
+}
+
+.persona-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.persona-dirty {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.lab-field {
+  display: block;
+  margin-bottom: 11px;
+}
+
+.lab-field > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.lab-field > span b {
+  color: var(--accent-3);
+  font-weight: 600;
+}
+
+.lab-field input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--bg-1);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  font-size: 10.5px;
+}
+
+.lab-field input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
+.lab-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* ── Presence depth layers ──
+   A flat portrait moved as one rectangle is the Ken Burns effect, not a
+   person. These layers give the frame parallax depth, hair with its own
+   mass, and eyelids — the three things a rigid transform cannot fake. */
+
+.eve-photo-frame {
+  position: relative;
+  isolation: isolate;
+}
+
+.eve-layer-back,
+.eve-layer-hair {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Fills the entire viewport including the gutter around the portrait. Inside
+   the photo frame it was perfectly occluded by the opaque <img>. */
+.eve-viewport > .eve-layer-back {
+  inset: -6%;
+  z-index: 0;
+}
+
+.eve-layer-hair { inset: 0; }
+
+/* Backdrop: over-scaled + blurred so counter-motion reads as depth of field
+   rather than a doubled edge. */
+.eve-layer-back {
+  z-index: 0;
+  transform: scale(1.085);
+  filter: blur(9px) brightness(0.82) saturate(0.92);
+}
+
+/* Hair halo: outer ring only. The centre is masked out so her face never
+   ghosts — only the surrounding mass moves independently. */
+.eve-layer-hair {
+  z-index: 3;
+  opacity: 0.5;
+  mix-blend-mode: lighten;
+  -webkit-mask-image: radial-gradient(
+    ellipse 46% 44% at 50% 40%,
+    transparent 0%,
+    transparent 58%,
+    #000 76%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 46% 44% at 50% 40%,
+    transparent 0%,
+    transparent 58%,
+    #000 76%,
+    #000 100%
+  );
+}
+
+.eve-photo-frame .eve-photo {
+  position: relative;
+  z-index: 2;
+}
+
+/* Eyelids — pinned to her eye positions in the 1536² portrait, expressed in
+   percentages so they hold at any display size. --lid is 0 (open) to 1 (shut). */
+.eve-lids {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  --lid: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.eve-lid {
+  position: absolute;
+  width: 10.4%;
+  height: 5.2%;
+  border-radius: 50% 50% 44% 44% / 78% 78% 30% 30%;
+  transform-origin: top center;
+  transform: scaleY(calc(var(--lid) * 1.06));
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(178, 130, 100, 0.97) 0%,
+      rgba(196, 148, 116, 0.96) 55%,
+      rgba(150, 105, 80, 0.9) 88%,
+      rgba(120, 82, 62, 0.55) 100%
+    );
+  box-shadow: 0 0.14em 0.28em rgba(60, 36, 24, 0.3);
+}
+
+/* Positions read off the portrait: eyes sit at ~40% height, ~40% / ~57% wide */
+.eve-lid-l { left: 34.6%; top: 37.4%; }
+.eve-lid-r { left: 55.4%; top: 37.4%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eve-layer-back,
+  .eve-layer-hair,
+  .eve-lids { display: none; }
+}

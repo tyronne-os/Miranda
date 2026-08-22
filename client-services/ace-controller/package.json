@@ -1,0 +1,11 @@
+{
+  "name": "@eve-ecc/ace-controller",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Phase E Instant Presence ACE orchestrator (mock → live NIM)",
+  "scripts": {
+    "dev": "node ./run.mjs",
+    "start": "node ./run.mjs",
+    "health": "node ./healthcheck.mjs"
+  }
+}

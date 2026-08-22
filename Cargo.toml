@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+    "miranda-core",
+    "miranda-ipc",
+    "miranda-audio",
+    "miranda-nodes",
+    "miranda-supervisor",
+    "miranda-transport",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+opt-level = 1

@@ -1,0 +1,7 @@
+[package]
+name = "miranda-transport"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+miranda-core = { path = "../miranda-core" }
