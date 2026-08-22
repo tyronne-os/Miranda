@@ -8,6 +8,7 @@ import {
   controlPlaneReady,
   getContract,
   healthForStageRole,
+  isHotOrAlternative,
   latencyForHealth,
   nextStage,
   prevStage,
@@ -548,7 +549,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
         let health = healthForStageRole(def.id, stage, warmProgress);
 
         // Target stage pulls warm nodes forward
-        if (targetStage !== stage && getContract(targetStage).hotNodes.includes(def.id)) {
+        if (targetStage !== stage && isHotOrAlternative(getContract(targetStage), def.id)) {
           if (warmProgress > 0.2 && health === "cold") health = "warming";
           if (warmProgress > 0.6 && (health === "warming" || health === "cold")) health = "ready";
           if (warmProgress > 0.9) health = "hot";

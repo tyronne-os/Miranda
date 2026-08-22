@@ -61,11 +61,31 @@ export interface StageContract {
   subtitle: string;
   /** Control-plane response budget (ms) — Instant Presence hard rule */
   controlBudgetMs: number;
-  /** Nodes that must be ready at this stage */
+  /**
+   * Node ids that must ALL be ready at this stage. Every entry here is a
+   * hard requirement — use this only for nodes with no substitute.
+   */
   hotNodes: string[];
+  /**
+   * WO-5 T3: groups of node ids where readiness needs only ONE member of
+   * each group to be ready/hot, not all of them.
+   *
+   * This exists because Miranda-Engine runs two coexisting pipelines for
+   * the same signal-path role (Pipeline 1's `cloud-bridge` and Pipeline 2's
+   * `native-capture` + `kinematics` both produce "live speech is being
+   * processed" — see aceTopology.ts's module docs). A session running only
+   * Pipeline 1, which is the pipeline that's actually live today, must
+   * still be able to reach L1 even though `native-capture` sits cold
+   * forever in that session. Modeling this as `hotNodes` (AND semantics)
+   * would make Pipeline 1-only sessions permanently unable to reach L1 —
+   * exactly the kind of "quad-test" support gap PROJECT_OVERVIEW.md calls
+   * out as a hard requirement (pipelines must be independently viable, not
+   * mutually required).
+   */
+  hotNodeAlternatives?: string[][];
   /** Nodes allowed to still warm */
   warmNodes: string[];
-  /** Whether Omniverse pixel stream is required */
+  /** Whether the WebGPU splat viewport is required */
   requiresPixelStream: boolean;
   /** Whether ARKit blendshapes are live */
   requiresBlendshapes: boolean;

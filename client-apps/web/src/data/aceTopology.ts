@@ -244,17 +244,18 @@ export const STAGE_CONTRACTS: Record<"L0" | "L1" | "L2", StageContract> = {
     title: "Live Signal Path",
     subtitle: "Cloud bridge (Pipeline 1) and/or native harness (Pipeline 2) driving ARKit-52 + telemetry",
     controlBudgetMs: 1000,
-    hotNodes: [
-      "mic",
-      "presence",
-      "cloud-bridge",
-      "native-capture",
-      "ipc-bus",
-      "supervisor",
-      "kinematics",
-      "transport",
+    // WO-5 T3: mic/presence are unconditional. Everything downstream of
+    // "is speech being processed" has two independent pipelines that each
+    // fulfil the same role — see hotNodeAlternatives below and its doc in
+    // types.ts. A Pipeline 1-only session (the live one today) reaches L1
+    // with cloud-bridge alone, no native-capture/ipc-bus/supervisor/
+    // kinematics/transport required; a Pipeline 2-only session reaches L1
+    // through the other group.
+    hotNodes: ["mic", "presence"],
+    hotNodeAlternatives: [
+      ["cloud-bridge", "kinematics"],
     ],
-    warmNodes: ["renderer"],
+    warmNodes: ["native-capture", "ipc-bus", "supervisor", "transport", "renderer"],
     requiresPixelStream: false,
     requiresBlendshapes: true,
   },
@@ -263,18 +264,14 @@ export const STAGE_CONTRACTS: Record<"L0" | "L1" | "L2", StageContract> = {
     title: "WebGPU Splat Render",
     subtitle: "Full data plane — WGSL Gaussian-splat viewport takeover",
     controlBudgetMs: 1000,
-    hotNodes: [
-      "mic",
-      "presence",
-      "cloud-bridge",
-      "native-capture",
-      "ipc-bus",
-      "supervisor",
-      "kinematics",
-      "transport",
-      "renderer",
+    // L2 needs the transport+renderer leg regardless of which pipeline is
+    // producing the frames underneath it, so those two stay unconditional
+    // hard requirements — only the ASR/reasoning leg keeps its either/or.
+    hotNodes: ["mic", "presence", "transport", "renderer"],
+    hotNodeAlternatives: [
+      ["cloud-bridge", "kinematics"],
     ],
-    warmNodes: [],
+    warmNodes: ["native-capture", "ipc-bus", "supervisor"],
     requiresPixelStream: true,
     requiresBlendshapes: true,
   },

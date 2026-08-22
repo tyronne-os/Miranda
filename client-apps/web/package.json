@@ -8,7 +8,8 @@
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "lint": "tsc --noEmit -p tsconfig.json --pretty false",
-    "typecheck": "tsc --noEmit -p tsconfig.json --pretty false"
+    "typecheck": "tsc --noEmit -p tsconfig.json --pretty false",
+    "test": "vitest run"
   },
   "dependencies": {
     "@xyflow/react": "^12.8.2",

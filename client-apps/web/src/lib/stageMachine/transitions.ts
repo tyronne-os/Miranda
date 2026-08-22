@@ -45,6 +45,36 @@ export function controlPlaneReady(nodes: Record<string, NodeRuntime>): boolean {
   });
 }
 
+function isReadyOrHot(health: NodeHealth | undefined): boolean {
+  return health === "ready" || health === "hot";
+}
+
+function isWarmingOrDegraded(health: NodeHealth | undefined): boolean {
+  return health === "warming" || health === "degraded";
+}
+
+/**
+ * WO-5 T3: evaluates one `hotNodeAlternatives` group. Readiness needs only
+ * the BEST member of the group, not all of them — see the field's doc in
+ * `types.ts` for why (two coexisting pipelines fulfilling one role).
+ *
+ * Returns "ready" if any member is ready/hot, "warming" if none are ready
+ * but at least one is warming/degraded (so the UI can still show progress
+ * rather than a flat "missing"), or "missing" if every member is cold.
+ */
+function evaluateAlternativeGroup(
+  group: string[],
+  nodes: Record<string, NodeRuntime>,
+): "ready" | "warming" | "missing" {
+  let anyWarming = false;
+  for (const id of group) {
+    const health = nodes[id]?.health;
+    if (isReadyOrHot(health)) return "ready";
+    if (isWarmingOrDegraded(health)) anyWarming = true;
+  }
+  return anyWarming ? "warming" : "missing";
+}
+
 export function stageReadiness(
   stage: PresenceStage,
   nodes: Record<string, NodeRuntime>,
@@ -53,21 +83,36 @@ export function stageReadiness(
   const missing: string[] = [];
   const warming: string[] = [];
   let hot = 0;
+  let total = contract.hotNodes.length;
 
   for (const id of contract.hotNodes) {
     const health = nodes[id]?.health ?? "cold";
-    if (health === "ready" || health === "hot") {
+    if (isReadyOrHot(health)) {
       hot += 1;
-    } else if (health === "warming" || health === "degraded") {
+    } else if (isWarmingOrDegraded(health)) {
       warming.push(id);
     } else {
       missing.push(id);
     }
   }
 
-  const score = contract.hotNodes.length
-    ? hot / contract.hotNodes.length
-    : 1;
+  // Each alternatives group counts as exactly one readiness unit, evaluated
+  // by its best member — not one unit per member, which would make an
+  // alternatives group easier to satisfy than an equivalent single hard
+  // requirement and skew the score.
+  for (const group of contract.hotNodeAlternatives ?? []) {
+    total += 1;
+    const status = evaluateAlternativeGroup(group, nodes);
+    if (status === "ready") {
+      hot += 1;
+    } else if (status === "warming") {
+      warming.push(group.join("|"));
+    } else {
+      missing.push(group.join("|"));
+    }
+  }
+
+  const score = total ? hot / total : 1;
 
   return {
     ready: missing.length === 0 && warming.length === 0 && controlPlaneReady(nodes),
@@ -77,13 +122,22 @@ export function stageReadiness(
   };
 }
 
+/** True if `nodeId` is a hard requirement or belongs to one of the
+ * contract's alternatives groups (WO-5 T3). Exported so other consumers
+ * (e.g. `presenceStore.ts`'s warm-pull logic) don't re-implement this check
+ * against `hotNodes` alone and silently miss the alternatives groups. */
+export function isHotOrAlternative(contract: StageContract, nodeId: string): boolean {
+  if (contract.hotNodes.includes(nodeId)) return true;
+  return (contract.hotNodeAlternatives ?? []).some((group) => group.includes(nodeId));
+}
+
 export function healthForStageRole(
   nodeId: string,
   stage: PresenceStage,
   progress: number,
 ): NodeHealth {
   const contract = getContract(stage);
-  if (contract.hotNodes.includes(nodeId)) {
+  if (isHotOrAlternative(contract, nodeId)) {
     if (progress >= 0.92) return "hot";
     if (progress >= 0.55) return "ready";
     if (progress >= 0.15) return "warming";
@@ -96,7 +150,7 @@ export function healthForStageRole(
   }
   // Below required stage — keep cold but not error
   const required = Object.values(STAGE_CONTRACTS).find((c) =>
-    c.hotNodes.includes(nodeId),
+    isHotOrAlternative(c, nodeId),
   );
   if (required && stageIndex(stage) < stageIndex(required.stage)) {
     return progress > 0.5 ? "warming" : "cold";
