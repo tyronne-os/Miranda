@@ -22,6 +22,14 @@ export function createBusEvent(
 /**
  * Spatial Syncer — Instant Presence media clock.
  * Control plane ticks freely; data plane may lag without blocking L0.
+ *
+ * WO-5 T2 note: deliberately NOT wired to `miranda-transport`'s telemetry
+ * `tUs` (see `mirandaTransport.ts`). This clock drives the browser's own
+ * idle-animation loop and must keep advancing on `performance.now()` alone
+ * regardless of network state — that is the decoupled-render-loop guardrail
+ * this Work Order specifies: the avatar's motion may never depend on a
+ * network tick arriving. Server telemetry timestamps are for the telemetry
+ * dashboard's own display, not for driving local animation.
  */
 export class SpatialSyncer {
   private started = performance.now();
