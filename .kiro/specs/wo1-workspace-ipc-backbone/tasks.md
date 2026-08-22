@@ -346,15 +346,24 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
   git commit -m "WO-1 complete: lock-free IPC backbone, 3 ring buffers, MIRI clean, concurrent test, ≤50μs latency verified"
   ```
 
-  **After committing — ARM64 verification:**
+  **After committing — ARM64 verification (automated):**
 
-  SSH into the t4g.small EC2 instance, clone the repo (or `git pull` if already cloned), and run:
-  ```
-  cargo test -p miranda-ipc -- --nocapture
-  ```
-  natively on the Graviton box. Re-run the latency benchmark result. Paste the output as a comment on this commit or in the Kiro session. The ≤50 μs target applies on both platforms — if ARM64 fails, apply the `#[repr(align(64))]` fix from T5 and re-run.
+  The ARM64 cross-check does not block WO-2. It runs in parallel once AWS credentials are configured. Three scripts in `scripts/` handle the entire flow — no manual AWS console interaction required:
 
-  WO-1 is done. Read `.kiro/steering/pipeline-1-aws-native.md` now — it tells you exactly what the Pipeline 1 implementations of WO-2 through WO-5 look like and which AWS services fill each node role. WO-2 (acoustic ingress) can begin.
+  | Script | What it does |
+  |---|---|
+  | `scripts/aws-setup.sh` | One-time credential setup: silent-read prompts for AWS key ID + secret → writes `~/.aws/credentials`, verifies with `aws sts get-caller-identity`, accepts PEM key via stdin → `~/.ssh/beryl-aws-key.pem`, auto-discovers the EC2 instance IP |
+  | `scripts/provision-ec2.sh` | If no t4g.small exists yet: launches one, installs Rust, clones the repo via user-data. Run once, wait ~3 minutes. |
+  | `scripts/arm64-verify.sh` | SSHes into the instance, syncs the repo via `git pull`, runs `cargo build`, `cargo test -p miranda-ipc -- --nocapture`, and the MIRI check — pastes real ARM64 output. |
+
+  **To close the ARM64 gap:**
+  1. Run `bash scripts/aws-setup.sh` once from your local terminal (adds AWS credentials + PEM key — keys go directly to disk, never through chat)
+  2. If no EC2 instance exists: run `bash scripts/provision-ec2.sh` once (launches the t4g.small automatically, wait 3 minutes)
+  3. Run `bash scripts/arm64-verify.sh` — it handles SSH, repo sync, and all tests, and pastes the results back here
+
+  If the latency benchmark fails on ARM64 (> 50 μs): add `#[repr(align(64))]` to the `AtomicUsize` control structs and re-run. The ARM64 fix does not require a model switch — it's a CAT 1 change (adding a repr attribute).
+
+  **WO-1 is done and WO-2 can begin.** The ARM64 verification runs in parallel. Read `.kiro/steering/pipeline-1-aws-native.md` now — it defines exactly what WO-2 through WO-5 look like for Pipeline 1 (AWS managed services, no custom Rust for the first pass). WO-2 (acoustic ingress) starts next.
 
 ---
 
