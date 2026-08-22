@@ -11,11 +11,11 @@ import { join } from 'path';
 const SPECS_DIR = join(import.meta.dirname, '..', '.kiro', 'specs');
 
 const MODEL_BY_CAT = {
-  1: 'Haiku 4.5',
-  2: 'Sonnet 5',
-  3: 'Sonnet 5',
-  4: 'Sonnet 5 (escalate to Opus 5 after 2 failed verifications)',
-  5: 'Opus 5 — MANDATORY, no exceptions',
+  1: 'Qwen3 Coder Next',
+  2: 'GLM-5',
+  3: 'DeepSeek 3.2',
+  4: 'Claude Sonnet 5 (escalate to Opus 5 after 2 failed verifications)',
+  5: 'Claude Opus 5 — MANDATORY, no exceptions',
 };
 
 function findTasksFiles(dir) {

@@ -1,4 +1,6 @@
-Paste the block below into Kiro's chat, in this workspace, on Sonnet 5, to formally start the build.
+Paste the block below into Kiro's chat, in this workspace, to formally start the build.
+
+Before pasting, run `node scripts/cat-router-check.mjs` yourself and set your chat model to whatever CAT 1 requires (**Qwen3 Coder Next**) if you're starting from the top of a Work Order — the protocol below will tell you exactly when to switch from there.
 
 ---
 
@@ -8,12 +10,18 @@ You are now working on the **NOBILITY POSH FRAMEWORK**, building exceptional 2D-
 
 Load `.kiro/steering/build-standards.md` and `.kiro/steering/model-routing-protocol.md` — these are mandatory, global, no-deviation operating rules for this entire workspace, not suggestions.
 
-The CAT-5 Model Routing Protocol governs which model handles which task. You are currently running as Sonnet 5 — the default for this workspace. Every task in every Work Order under `.kiro/specs/` is tagged `[CAT 1]` through `[CAT 5]`. Before starting any task, check its tag:
+The CAT-5 Model Routing Protocol governs which model handles which task, and it's deliberately mixed-provider — Claude is reserved for CAT 4-5 only:
 
-- CAT 1-3: proceed normally.
-- CAT 4: proceed, but if you fail real verification (a real test/build/benchmark, not uncertainty) twice on the same task, stop and output a CAT 5 escalation notice instead of a third attempt.
-- CAT 5: do not attempt it. Stop immediately and output: `CAT 5 ESCALATION REQUIRED — <task name> requires Opus 5. Switch the chat model dropdown to Opus 5, then re-issue this task alone.`
+- **CAT 1** → Qwen3 Coder Next
+- **CAT 2** → GLM-5
+- **CAT 3** → DeepSeek 3.2
+- **CAT 4** → Claude Sonnet 5 (escalate to Opus 5 after 2 real failed verifications)
+- **CAT 5** → Claude Opus 5 only
 
-Run `node scripts/cat-router-check.mjs` now to see the current task backlog broken out by CAT tier before we begin.
+Every task in every Work Order under `.kiro/specs/` is tagged `[CAT 1]` through `[CAT 5]`. Before starting any task, check its tag against the model you're currently running as:
 
-Then load `.kiro/specs/wo1-workspace-ipc-backbone/requirements.md`, `design.md`, and `tasks.md`, and begin executing Work Order 1's CAT 1-4 tasks in order. Stop at the CAT 5 ring-buffer task and hand it back per the protocol above. Confirm every task with real command output — `cargo build`/`cargo test` results, not a description of what should happen.
+- If they match: proceed normally.
+- If they don't match: stop. Do not attempt the task on the wrong model. Output: `CAT <n> MODEL SWITCH REQUIRED — <task name> requires <model>. Switch the chat model dropdown to <model>, then re-issue this task alone.`
+- CAT 4 specifically: if you fail real verification (a real test/build/benchmark, not uncertainty) twice on the same task, escalate to Opus 5 instead of a third attempt.
+
+Then load `.kiro/specs/wo1-workspace-ipc-backbone/requirements.md`, `design.md`, and `tasks.md`, and begin executing Work Order 1's tasks in tag order, switching models exactly when the protocol requires it. Confirm every task with real command output — `cargo build`/`cargo test` results, not a description of what should happen.

@@ -19,18 +19,19 @@ This document exists to formally introduce this workspace to any model operating
 
 ## The CAT-5 Model Routing Protocol — mandatory, global, no deviation
 
-Every task in every Work Order is tagged `[CAT 1]` through `[CAT 5]`. This governs which model handles it:
+Every task in every Work Order is tagged `[CAT 1]` through `[CAT 5]`. This governs which model handles it — **deliberately mixed-provider, Claude reserved for CAT 4-5 only**:
 
 | CAT | Model | Why |
 |---|---|---|
-| 1 | Haiku 4.5 | Mechanical, zero reasoning required |
-| 2-3 | Sonnet 5 | The default workhorse — most tasks land here |
-| 4 | Sonnet 5, escalate to Opus 5 after 2 real failed verification attempts | Real risk, bounded scope |
-| 5 | **Opus 5 only, no exceptions** | Silent-failure-risk engineering: lock-free concurrency, unsafe memory/ABI correctness, real-time SIMD math, novel shader algorithms |
+| 1 | **Qwen3 Coder Next** | Coding-specialized, cheapest tier — mechanical, zero reasoning required |
+| 2 | **GLM-5** | Light reasoning, well-known patterns |
+| 3 | **DeepSeek 3.2** | The workhorse — most tasks land here, strong reasoning-per-dollar |
+| 4 | **Claude Sonnet 5**, escalate to Opus 5 after 2 real failed verification attempts | Real risk, bounded scope — first tier where Claude is required |
+| 5 | **Claude Opus 5 only, no exceptions** | Silent-failure-risk engineering: lock-free concurrency, unsafe memory/ABI correctness, real-time SIMD math, novel shader algorithms |
 
-**Before starting any task, check its CAT tag.** If it's CAT 5 and you're not running as Opus 5, stop and output the escalation notice rather than attempting it — see the full protocol doc for the exact procedure. Run `node scripts/cat-router-check.mjs` at the start of any session to see the current CAT 5 backlog before deciding whether you'll need the model switch at all.
+**Before starting any task, check its CAT tag and switch to the required model if the active session doesn't match.** See the full protocol doc for the exact escalation-notice wording. Run `node scripts/cat-router-check.mjs` at the start of any session to see the current backlog by tier.
 
-**Default models for this workspace, both chat and autonomous builder execution: Sonnet 5.** Opus 5 is recruited surgically for the 3 CAT 5 tasks in the entire project (and any CAT 4 that earns escalation through real failure), then relieved back to Sonnet 5 immediately after. This is a deliberate cost-control decision, not a capability limitation — do not default to Opus for convenience.
+**28 of 36 total tasks (CAT 1-3) never touch Claude at all.** Claude is confined to the 5 CAT 4 tasks and 3 CAT 5 tasks — roughly 22% of the build, spent on the highest-value engineering. This is a deliberate cost/capability allocation, not a default — don't reach for Claude out of convenience on a CAT 1-3 task.
 
 ## Non-negotiable operating rules (full detail in `.kiro/steering/build-standards.md`)
 
