@@ -30,4 +30,5 @@ pub mod blink;
 pub mod breath;
 pub mod compositor;
 pub mod gaze;
+pub mod solver;
 pub mod viseme;
