@@ -36,3 +36,17 @@ The `miranda-supervisor` crate must manage workflow test execution exclusively v
 - Volume-mount `/dev/shm/miranda_bus` into the session container (`-v /dev/shm/miranda_bus:/dev/shm/miranda_bus:rw`) so the containerized session can still reach the bare-metal IPC bus with zero-copy semantics (see the note above on why this mount doesn't itself cost latency).
 - Enforce strict container lifecycle management: graceful teardown on session end, forced `SIGKILL` + `podman rm -f` on timeout — no zombie processes, no resource starvation across parallel sessions.
 - This is what makes Miranda a true multi-tenant testing lab, not just a renderer: many workflow tests can run in parallel on one EC2 instance, each in its own disposable container, all sharing the one bare-metal IPC core.
+
+## 5. The "Power of Pivoting" (Anti-Loop Protocol)
+
+You are strictly forbidden from engaging in repetitive debugging loops. If you encounter the same compilation error, logic failure, or test failure on a specific block of code for the third consecutive attempt, you must immediately cease local troubleshooting. You are fully empowered to pivot.
+
+When the 3-Strike limit is reached, execute the following Pivot Protocol:
+
+**Step 1: Halt and Search.** Abandon the current approach. Utilize your web search and repository scanning capabilities to query Hugging Face, GitHub, or arXiv for alternative solutions.
+
+**Step 2: Source High-Tier Reference Code.** Filter your research for working, reproducible code from top-rated projects, heavily starred repositories, or recent peer-reviewed papers (2025-2026). Do not pull from obscure or unverified sources.
+
+**Step 3: Rip and Replace.** Do not attempt to forcefully merge the new solution with the broken logic. Completely replace the failing implementation with the verified architectural pattern you discovered.
+
+**Step 4: Document the Pivot.** When you successfully implement the new solution, explicitly state in the chat: "PIVOT EXECUTED." You must provide the URL of the GitHub repository or Hugging Face paper you pulled the working architecture from, along with a one-sentence rationale of why it bypassed the error.

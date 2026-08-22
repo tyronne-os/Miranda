@@ -4,3 +4,4 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }

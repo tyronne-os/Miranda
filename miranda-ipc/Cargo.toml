@@ -5,3 +5,5 @@ edition.workspace = true
 
 [dependencies]
 miranda-core = { path = "../miranda-core" }
+memmap2 = "0.9"
+bytemuck = { version = "1", features = ["derive"] }

@@ -96,7 +96,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ## Tasks
 
-- [ ] [CAT 1] **T1 — Verify the workspace builds clean**
+- [x] [CAT 1] **T1 — Verify the workspace builds clean**
 
   From the repo root, run:
   ```
@@ -112,7 +112,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 1] **T2 — Add dependencies to `miranda-ipc/Cargo.toml`**
+- [x] [CAT 1] **T2 — Add dependencies to `miranda-ipc/Cargo.toml`**
 
   Open `miranda-ipc/Cargo.toml`. Add the following to the `[dependencies]` table:
   ```toml
@@ -130,7 +130,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 3] **T3 — Define the three payload structs in `miranda-core`**
+- [x] [CAT 3] **T3 — Define the three payload structs in `miranda-core`**
 
   Open `miranda-core/src/lib.rs`. Add the constants and structs exactly as specified in `design.md`. Do not invent different field names or sizes — these are fixed by the pipeline science.
 
@@ -183,7 +183,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 5] **T4 — Implement the ring buffer in `miranda-ipc` — Claude Opus 5 ONLY**
+- [x] [CAT 5] **T4 — Implement the ring buffer in `miranda-ipc` — Claude Opus 5 ONLY**
 
   ⚠️ **MANDATORY MODEL SWITCH BEFORE THIS TASK**
 
@@ -245,7 +245,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 4] **T5 — Write the concurrent round-trip test + latency benchmark — Claude Sonnet 5**
+- [x] [CAT 4] **T5 — Write the concurrent round-trip test + latency benchmark — Claude Sonnet 5**
 
   ⚠️ **Model check:** Claude Sonnet 5. If on Opus 5 from T4, you may stay — Opus 5 is an acceptable superset. If on a lower tier, switch to Sonnet 5 first.
 
@@ -298,7 +298,7 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [ ] [CAT 2] **T6 — Document every `unsafe` block — GLM-5**
+- [x] [CAT 2] **T6 — Document every `unsafe` block — GLM-5**
 
   ⚠️ **Model check:** Switch to GLM-5.
 
