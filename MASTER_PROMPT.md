@@ -19,8 +19,8 @@ Every task in every Work Order under `.kiro/specs/` is tagged `[CAT 1]` through 
 | CAT | Model | Why |
 |---|---|---|
 | **1** | Qwen3 Coder Next | Mechanical — boilerplate, scaffolding, adding deps, confirming builds. Zero reasoning required. |
-| **2** | GLM-5 | Light reasoning — well-known patterns, simple data structures, basic tests. |
-| **3** | DeepSeek 3.2 | Workhorse — non-trivial logic, third-party integrations, behavioral tests. Most tasks land here. |
+| **2** | Amazon Nova Lite | Light reasoning — well-known patterns, simple data structures, basic tests. |
+| **3** | Amazon Nova Pro | Workhorse — non-trivial logic, third-party integrations, behavioral tests. Most tasks land here. |
 | **4** | Claude Sonnet 5 | Real risk — networking correctness, SIMD math, security-sensitive code. Escalate to Opus 5 after 2 real failed verifications. |
 | **5** | Claude Opus 5 only — no exceptions | Silent-failure risk — lock-free concurrency, unsafe memory/ABI, real-time SIMD, novel shader math. Wrong code compiles and fails in production. |
 

@@ -56,10 +56,10 @@ Use **multi-session with explicit handoff blocks at each CAT transition**, not a
 **How the session boundaries work in Kiro:**
 
 1. **Qwen3 Coder Next** — paste MASTER_PROMPT.md, execute T1 and T2
-2. **DeepSeek 3.2** — execute T3 (struct definitions)
+2. **Amazon Nova Pro** — execute T3 (struct definitions)
 3. **Claude Opus 5** — paste the T4 handoff block below, execute T4 only
 4. **Claude Sonnet 5** (or stay on Opus 5 — acceptable superset) — execute T5
-5. **GLM-5** — execute T6 (SAFETY comments)
+5. **Amazon Nova Lite** — execute T6 (SAFETY comments)
 6. **Qwen3 Coder Next** — execute T7 (final verification + commit)
 
 Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is the paste that brings the new model up to speed.
@@ -87,8 +87,8 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 | Task | CAT tier | Model |
 |---|---|---|
 | T1, T2, T7 | CAT 1 | Qwen3 Coder Next |
-| T6 | CAT 2 | GLM-5 |
-| T3 | CAT 3 | DeepSeek 3.2 |
+| T6 | CAT 2 | Amazon Nova Lite |
+| T3 | CAT 3 | Amazon Nova Pro |
 | T5 | CAT 4 | Claude Sonnet 5 (escalate to Opus 5 after 2 real failed verifications) |
 | T4 | **CAT 5** | **Claude Opus 5 — mandatory, no exceptions** |
 
@@ -298,9 +298,9 @@ Each switch is a 10-second dropdown change in Kiro. The handoff block in T4 is t
 
 ---
 
-- [x] [CAT 2] **T6 — Document every `unsafe` block — GLM-5**
+- [x] [CAT 2] **T6 — Document every `unsafe` block — Amazon Nova Lite**
 
-  ⚠️ **Model check:** Switch to GLM-5.
+  ⚠️ **Model check:** Switch to Amazon Nova Lite.
 
   Scan `miranda-ipc/src/lib.rs` for every `unsafe` block or `unsafe` expression. For each one, add or verify a `// SAFETY:` comment explaining:
   - What the unsafe operation is

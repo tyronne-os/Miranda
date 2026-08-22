@@ -52,8 +52,8 @@ Every task in every Work Order is tagged `[CAT 1]` through `[CAT 5]`. This gover
 | CAT | Model | Why |
 |---|---|---|
 | 1 | **Qwen3 Coder Next** | Coding-specialized, cheapest tier — mechanical, zero reasoning required |
-| 2 | **GLM-5** | Light reasoning, well-known patterns |
-| 3 | **DeepSeek 3.2** | The workhorse — most tasks land here, strong reasoning-per-dollar |
+| 2 | **Amazon Nova Lite** | Light reasoning, well-known patterns |
+| 3 | **Amazon Nova Pro** | The workhorse — most tasks land here, strong reasoning-per-dollar |
 | 4 | **Claude Sonnet 5**, escalate to Opus 5 after 2 real failed verification attempts | Real risk, bounded scope — first tier where Claude is required |
 | 5 | **Claude Opus 5 only, no exceptions** | Silent-failure-risk engineering: lock-free concurrency, unsafe memory/ABI correctness, real-time SIMD math, novel shader algorithms |
 
