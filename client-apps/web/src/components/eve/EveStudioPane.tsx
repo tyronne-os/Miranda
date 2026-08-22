@@ -4,6 +4,7 @@ import { StudioAdminDrawer } from "@/components/admin/StudioAdminDrawer";
 import { usePresenceStore } from "@/store/presenceStore";
 import { listenOnce, speakText, canListen } from "@/lib/ace/eveVoice";
 import { EvePresenceViewport } from "./EvePresenceViewport";
+import { SplatViewport } from "./SplatViewport";
 
 /**
  * Vanity front surface — mirror-clear.
@@ -110,6 +111,14 @@ export function EveStudioPane() {
           warmProgress={warmProgress}
           still={stillOverride}
         />
+
+        {stage === "L2" && (
+          <SplatViewport
+            onUnavailable={() => {
+              // WebGPU unavailable — EvePresenceViewport stays visible as fallback.
+            }}
+          />
+        )}
 
         <button
           type="button"

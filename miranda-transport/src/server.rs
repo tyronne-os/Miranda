@@ -35,12 +35,14 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
+    http::{HeaderValue, Method},
     response::IntoResponse,
     routing::get,
     Json, Router,
 };
 use serde_json::json;
 use tokio::time;
+use tower_http::cors::CorsLayer;
 
 use crate::frame::PACKET_SIZE;
 use crate::hub::DataChannelHub;
@@ -97,6 +99,7 @@ impl TransportServer {
             .route("/health", get(health_handler))
             .route("/data", get(data_ws_handler))
             .route("/telemetry", get(telemetry_ws_handler))
+            .layer(build_cors_layer())
             .with_state(state);
 
         let listener = tokio::net::TcpListener::bind(self.cfg.bind).await
@@ -105,6 +108,38 @@ impl TransportServer {
         axum::serve(listener, app).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
+}
+
+/// Builds the CORS policy for the plain `GET /health` endpoint.
+///
+/// The WebSocket endpoints (`/data`, `/telemetry`) do NOT need this layer —
+/// the WebSocket handshake is not subject to the same-origin/CORS
+/// restriction that plain `fetch()` requests are, which is why the browser
+/// client's WebSocket connections worked before this layer existed while
+/// its `fetch("/health")` call failed with a CORS error.
+///
+/// Explicit origin allowlist, matching the pattern already used by
+/// `client-services/ace-controller/run.mjs` for the same reason: a
+/// wildcard (`Access-Control-Allow-Origin: *`) would also work for a
+/// GET-only, unauthenticated health check, but naming the exact dev-server
+/// origins keeps the policy legible and makes it obvious this is a local
+/// development harness, not a public API — the moment a real deployment
+/// origin needs to be added, it has to be added by name here, not silently
+/// covered by a wildcard already in place.
+fn build_cors_layer() -> CorsLayer {
+    let allowed_origins = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+    ]
+    .into_iter()
+    .map(|o| o.parse::<HeaderValue>().expect("static origin is valid"))
+    .collect::<Vec<_>>();
+
+    CorsLayer::new()
+        .allow_origin(allowed_origins)
+        .allow_methods([Method::GET])
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -242,6 +277,7 @@ mod tests {
             .route("/health", get(health_handler))
             .route("/data", get(data_ws_handler))
             .route("/telemetry", get(telemetry_ws_handler))
+            .layer(build_cors_layer())
             .with_state(state);
 
         tokio::spawn(async move {
@@ -256,6 +292,96 @@ mod tests {
         assert!(resp.status().is_success());
         let body: serde_json::Value = resp.json().await.unwrap();
         assert_eq!(body["ok"], true);
+    }
+
+    /// The specific defect this layer exists to fix: a browser page served
+    /// from one origin (Vite, port 5173) calling `fetch()` against this
+    /// server's different origin (port 9090) must succeed, not fail with a
+    /// CORS error. `reqwest` (used above) does not enforce CORS — only real
+    /// browsers do — so this test sends the `Origin` header a browser would
+    /// send and asserts the server answers with a matching
+    /// `Access-Control-Allow-Origin`, which is the actual signal a browser
+    /// checks before it allows the response through to JS.
+    #[tokio::test]
+    async fn health_endpoint_allows_the_vite_dev_origin() {
+        let data_hub = DataChannelHub::new();
+        let tele_hub = TelemetryHub::new(0);
+        let cfg = ServerConfig {
+            bind: "127.0.0.1:0".parse().unwrap(),
+            ..Default::default()
+        };
+
+        let listener = tokio::net::TcpListener::bind(cfg.bind).await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let state = Arc::new(AppState {
+            data_hub: data_hub.clone(),
+            tele_hub: tele_hub.clone(),
+            telemetry_interval: cfg.telemetry_interval,
+        });
+        let app = Router::new()
+            .route("/health", get(health_handler))
+            .layer(build_cors_layer())
+            .with_state(state);
+
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("http://127.0.0.1:{port}/health"))
+            .header("Origin", "http://127.0.0.1:5173")
+            .send()
+            .await
+            .expect("request failed");
+
+        assert!(resp.status().is_success());
+        let allow_origin = resp
+            .headers()
+            .get("access-control-allow-origin")
+            .expect("missing Access-Control-Allow-Origin header — a browser would reject this response");
+        assert_eq!(allow_origin, "http://127.0.0.1:5173");
+    }
+
+    /// An origin NOT on the allowlist must not be echoed back — proves this
+    /// is a real allowlist, not an accidental wildcard-everything policy.
+    #[tokio::test]
+    async fn health_endpoint_does_not_allow_an_unlisted_origin() {
+        let data_hub = DataChannelHub::new();
+        let tele_hub = TelemetryHub::new(0);
+        let cfg = ServerConfig {
+            bind: "127.0.0.1:0".parse().unwrap(),
+            ..Default::default()
+        };
+
+        let listener = tokio::net::TcpListener::bind(cfg.bind).await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let state = Arc::new(AppState {
+            data_hub: data_hub.clone(),
+            tele_hub: tele_hub.clone(),
+            telemetry_interval: cfg.telemetry_interval,
+        });
+        let app = Router::new()
+            .route("/health", get(health_handler))
+            .layer(build_cors_layer())
+            .with_state(state);
+
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("http://127.0.0.1:{port}/health"))
+            .header("Origin", "http://evil.example")
+            .send()
+            .await
+            .expect("request failed");
+
+        assert!(
+            resp.headers().get("access-control-allow-origin").is_none(),
+            "an unlisted origin must not receive an Access-Control-Allow-Origin header"
+        );
     }
 
     /// A data WebSocket subscriber receives correctly sized binary frames.
