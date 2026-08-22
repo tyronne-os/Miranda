@@ -761,6 +761,7 @@ mod tests {
     /// timing) — this test is meaningless under `cargo miri test` and is not
     /// run there.
     #[test]
+    #[cfg(not(miri))]
     fn test_round_trip_latency() {
         let bus = MirandaBus::in_memory();
         let payload = frame(0);

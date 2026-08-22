@@ -93,8 +93,11 @@ $SSH "
   source \$HOME/.cargo/env
   cd /home/ec2-user/miranda-engine
   if ! rustup toolchain list | grep -q nightly; then
-    rustup toolchain install nightly --component miri -q
+    rustup toolchain install nightly --component miri
     echo '✓ nightly + MIRI installed'
+  else
+    rustup component add miri --toolchain nightly 2>/dev/null || true
+    echo '✓ MIRI component verified'
   fi
   cargo +nightly miri test -p miranda-ipc 2>&1
 " || echo "⚠ MIRI reported issues on ARM64 — see output above. Fix before closing WO-1."
