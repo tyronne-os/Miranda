@@ -67,7 +67,7 @@ The rolling lookahead buffer (requirement 6 below) exists specifically because E
 **REQ-1** — WHEN the microphone produces PCM audio  
 THE SYSTEM SHALL capture it and write `AudioChunk` structs into the WO-1 `audio_bus` ring buffer without blocking the audio capture thread.
 
-> *Pipeline 1 note: in Pipeline 1, mic capture happens in the browser via `getUserMedia()` — the AudioChunk is constructed in JavaScript/TypeScript in `client-apps/web/` and the ring bus is simulated in-process (or via a WebSocket to the Rust process). Pipeline 2 uses `cpal` in `miranda-audio` for native mic capture. The `AudioChunk` struct and the bus write contract are identical; only the capture side changes.*
+> *Pipeline 1 note: mic capture happens in the browser via `getUserMedia()`, but the browser has no filesystem/mmap access and cannot write to `/dev/shm/miranda_bus` directly. The browser sends raw PCM over the existing WebSocket to `ace-controller` (`client-services/ace-controller/run.mjs`, port 8100), which owns the Transcribe Streaming and Bedrock Converse calls. `AudioChunk` construction and the actual ring-bus write are a Node.js-side (ace-controller) concern in Pipeline 1, not a browser-side one. Pipeline 2 uses `cpal` in `miranda-audio` for native mic capture with direct bus writes. The `AudioChunk` struct and the bus write contract are identical; only the capture/transport side changes.*
 
 **REQ-2** — WHEN speech begins or ends in the incoming audio stream  
 THE SYSTEM SHALL detect the transition (voice activity) within 10 ms of the actual transition and emit a typed event (`VadEvent::SpeechStart` or `VadEvent::SpeechEnd`) that downstream consumers can subscribe to.

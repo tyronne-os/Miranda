@@ -47,57 +47,120 @@ A: Stop on the CAT 3 model, emit the handoff block at the bottom of this file, s
 
 ## SESSION 1 — Pipeline 1 (AWS-native, do first)
 
-### T1 — [CAT 1] Add AWS SDK deps and scaffold TypeScript audio files
+### Architectural note for Session 1 — read before touching T1
 
-**Model: Qwen3 Coder Next**
+**The `ace-controller` Node.js service is the correct home for all Pipeline 1 AWS SDK calls.**
 
-1. In `client-apps/web/package.json`, add:
-   ```json
-   "@aws-sdk/client-transcribe-streaming": "^3",
-   "@aws-sdk/client-bedrock-runtime": "^3"
-   ```
-2. Run `npm install` from `client-apps/web/` and confirm it exits 0.
-3. Create these empty files (scaffold only — T2/T3/T4 will fill them):
-   - `client-apps/web/src/audio/MicCapture.ts`
-   - `client-apps/web/src/audio/VadDetector.ts`
-   - `client-apps/web/src/audio/TranscribeClient.ts`
-   - `client-apps/web/src/audio/BedrockRouter.ts`
-4. Run `npx tsc --noEmit` from `client-apps/web/` — must exit 0 (empty files are valid TS).
+Browsers have no filesystem or mmap access — they cannot read `/dev/shm/miranda_bus`. The service that must own the Transcribe Streaming WebSocket and the Bedrock Converse call is the existing Node.js backend at `client-services/ace-controller/run.mjs`, already running on `http://127.0.0.1:8100` with a WebSocket at `/ws`.
 
-**Evidence required**: `npm install` output (0 errors), `tsc --noEmit` exit 0.
+The correct Pipeline 1 data flow is:
+
+```
+Browser (client-apps/web/)
+  └─ getUserMedia() → Float32Array PCM chunks → VAD → on SpeechStart:
+     WebSocket message to ace-controller: { type: "audio-chunk", pcm: [...] }
+
+ace-controller (client-services/ace-controller/)
+  └─ receives PCM chunks over /ws → accumulates → streams to Amazon Transcribe Streaming
+     └─ partial transcript → broadcasts { type: "partial-transcript", text } back over /ws to browser
+     └─ final transcript → calls Amazon Bedrock Converse API
+        └─ response → broadcasts { type: "turn-complete", transcript, reply } over /ws to browser
+```
+
+**Existing infrastructure in ace-controller to preserve and extend (do NOT rewrite):**
+- `run.mjs` — the WebSocket server at `/ws` (already handles `{ type: "talk" }` for text-in path)
+- `/v1/talk` HTTP endpoint — still used for direct text-in (keep it)
+- `nvidiaChatMessages()` / `nvidiaChat()` — the existing NVIDIA Nemotron path (keep it, Pipeline 2 may use it)
+- `eveSystemPrompt()`, `PERSONA`, `REALNESS` — persona system (keep, do not modify)
+- The `/ws` message handler already has `if (msg.type === "talk")` — extend it with `if (msg.type === "audio-chunk")`, do not replace the existing block
+
+T1 adds AWS SDK deps to `ace-controller`. T2 adds VAD to the browser. T3 adds the PCM→Transcribe path to ace-controller. T4 wires Bedrock into ace-controller's transcript handler.
 
 ---
 
-### T2 — [CAT 2] Implement browser VAD (energy threshold)
+### T1 — [CAT 1] Add AWS SDK deps to ace-controller
+
+**Model: Qwen3 Coder Next**
+
+1. In `client-services/ace-controller/package.json`, add:
+   ```json
+   {
+     "dependencies": {
+       "@aws-sdk/client-transcribe-streaming": "^3",
+       "@aws-sdk/client-bedrock-runtime": "^3"
+     }
+   }
+   ```
+2. Run `npm install` from `client-services/ace-controller/` — exits 0.
+3. Create these empty files (scaffold only — T3/T4 will fill them):
+   - `client-services/ace-controller/transcribe-bridge.mjs`
+   - `client-services/ace-controller/bedrock-router.mjs`
+4. In `client-apps/web/package.json`, verify there is NO `@aws-sdk` entry — the browser app does not get AWS SDKs. If any were added accidentally, remove them and run `npm install` again.
+
+**Evidence required**: `npm install` output from ace-controller (0 errors). Show `cat client-services/ace-controller/package.json` confirming both deps present.
+
+---
+
+### T2 — [CAT 2] Implement browser VAD (energy threshold) + PCM WebSocket sender
 
 **Model: Amazon Nova Lite**
 
-Implement `client-apps/web/src/audio/VadDetector.ts`. This is a simple RMS energy threshold — no ML model needed for Pipeline 1.
+The browser's job in Pipeline 1: capture mic audio, detect speech, send raw PCM chunks to ace-controller. Nothing else.
+
+Create `client-apps/web/src/audio/VadSender.ts`:
 
 ```typescript
-// Energy-threshold VAD for Pipeline 1 browser context
+// Browser Pipeline 1 acoustic layer:
+// getUserMedia → VAD → send PCM chunks to ace-controller /ws on SpeechStart
 export type VadEvent = 'speech-start' | 'speech-end';
 
-export class VadDetector {
+export class VadSender {
   private isSpeaking = false;
   private silenceFrames = 0;
-  private readonly THRESHOLD = 0.01;       // RMS energy floor
-  private readonly SILENCE_FRAMES = 15;    // 15 × 64ms ≈ 1 second of silence → SpeechEnd
+  private ws: WebSocket;
+  private readonly THRESHOLD = 0.01;
+  private readonly SILENCE_FRAMES = 15; // 15 × ~64ms ≈ 1 s of silence → SpeechEnd
 
-  feed(pcm: Float32Array): VadEvent | null {
+  constructor(aceControllerWsUrl: string) {
+    this.ws = new WebSocket(aceControllerWsUrl); // 'ws://127.0.0.1:8100/ws'
+  }
+
+  async start(): Promise<void> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true }
+    });
+    const ctx = new AudioContext({ sampleRate: 16000 });
+    const source = ctx.createMediaStreamSource(stream);
+    const processor = ctx.createScriptProcessor(1024, 1, 1);
+    source.connect(processor);
+    processor.connect(ctx.destination);
+
+    processor.onaudioprocess = (e) => {
+      const pcm = e.inputBuffer.getChannelData(0); // Float32Array, 1024 samples
+      const event = this.feedVad(pcm);
+      if (event === 'speech-start') {
+        // Signal ace-controller that a new utterance is starting
+        this.ws.send(JSON.stringify({ type: 'speech-start' }));
+      }
+      if (event === 'speech-end') {
+        this.ws.send(JSON.stringify({ type: 'speech-end' }));
+      }
+      if (this.isSpeaking && this.ws.readyState === WebSocket.OPEN) {
+        // Send raw PCM as a typed array message during active speech
+        this.ws.send(pcm.buffer);
+      }
+    };
+  }
+
+  private feedVad(pcm: Float32Array): VadEvent | null {
     const rms = Math.sqrt(pcm.reduce((s, x) => s + x * x, 0) / pcm.length);
     if (rms > this.THRESHOLD) {
       this.silenceFrames = 0;
-      if (!this.isSpeaking) {
-        this.isSpeaking = true;
-        return 'speech-start';
-      }
+      if (!this.isSpeaking) { this.isSpeaking = true; return 'speech-start'; }
     } else {
       this.silenceFrames++;
       if (this.isSpeaking && this.silenceFrames >= this.SILENCE_FRAMES) {
-        this.isSpeaking = false;
-        this.silenceFrames = 0;
-        return 'speech-end';
+        this.isSpeaking = false; this.silenceFrames = 0; return 'speech-end';
       }
     }
     return null;
@@ -105,100 +168,148 @@ export class VadDetector {
 }
 ```
 
-Write one unit test in `client-apps/web/src/audio/VadDetector.test.ts` using Vitest:
-- Feed 20 frames of silence (all zeros) → no event
-- Feed 5 frames of loud audio (RMS > threshold) → `'speech-start'` on the first frame
-- Feed 15 more frames of silence → `'speech-end'`
+Write one unit test in `client-apps/web/src/audio/VadSender.test.ts` using Vitest (test `feedVad` logic only — no browser API needed for this):
+- 20 frames of silence (all zeros) → no event
+- 5 frames of loud audio (RMS > THRESHOLD) → `'speech-start'` on first frame
+- 15 frames of silence → `'speech-end'`
 
-Run `npx vitest run --reporter=verbose` from `client-apps/web/` — test must pass.
+```bash
+npx vitest run --reporter=verbose
+```
+Must pass.
 
-**Evidence required**: Vitest output showing the VadDetector test passing.
+**Evidence required**: Vitest output showing the VadSender test passing.
 
 ---
 
-### T3 — [CAT 3] Implement Transcribe Streaming client
+### T3 — [CAT 3] Add PCM→Transcribe Streaming bridge to ace-controller
 
 **Model: Amazon Nova Pro**
 
-Implement `client-apps/web/src/audio/TranscribeClient.ts`. This is the Amazon Transcribe Streaming WebSocket integration. Read `.kiro/steering/pipeline-1-aws-native.md` and the `aws-pipeline-architect` Kiro skill before writing this.
+Read `.kiro/steering/pipeline-1-aws-native.md` and the `aws-pipeline-architect` Kiro skill section on Transcribe Streaming before writing any code.
 
-Key requirements:
-- Credentials: call AMANDA vault MCP `get_key("aws")` — never hardcode keys
-- Stream PCM chunks as 2048-sample batches (2 × 1024 from ScriptProcessor = 128 ms per send)
-- Handle both `IsPartial: true` (emit `onPartialTranscript`) and `IsPartial: false` (emit `onFinalTranscript`)
-- Re-entrancy: if a new `SpeechStart` arrives while a Transcribe stream is active, close the current stream gracefully and open a new one
+Implement `client-services/ace-controller/transcribe-bridge.mjs`:
 
-```typescript
+```javascript
+// Receives raw PCM Float32 from browser WebSocket, streams to Amazon Transcribe Streaming.
+// Emits partial and final transcript events back to the caller.
 import { TranscribeStreamingClient, StartStreamTranscriptionCommand } from '@aws-sdk/client-transcribe-streaming';
 
-export class TranscribeClient {
-  private client: TranscribeStreamingClient;
+export class TranscribeBridge {
+  #client;
+  #controller = null; // AbortController for in-flight stream
 
-  constructor(
-    private onPartialTranscript: (text: string) => void,
-    private onFinalTranscript: (text: string) => void
-  ) {
-    this.client = new TranscribeStreamingClient({ region: 'us-east-1' });
+  constructor() {
+    // Credentials from environment — injected by AMANDA vault at startup via aws-setup.sh
+    this.#client = new TranscribeStreamingClient({ region: process.env.AWS_REGION || 'us-east-1' });
   }
 
-  async startStream(audioGenerator: AsyncGenerator<Uint8Array>): Promise<void> {
+  // Call on SpeechStart. audioGen is an AsyncGenerator<Uint8Array> of 16kHz PCM chunks.
+  async startStream(audioGen, { onPartial, onFinal }) {
+    if (this.#controller) this.#controller.abort(); // cancel previous stream on interruption
+    this.#controller = new AbortController();
+
     const command = new StartStreamTranscriptionCommand({
       LanguageCode: 'en-US',
       MediaSampleRateHertz: 16000,
       MediaEncoding: 'pcm',
+      EnablePartialResultsStabilization: true,
+      PartialResultsStability: 'medium',
       AudioStream: (async function* () {
-        for await (const chunk of audioGenerator) {
+        for await (const chunk of audioGen) {
           yield { AudioEvent: { AudioChunk: chunk } };
         }
       })(),
-      EnablePartialResultsStabilization: true,
-      PartialResultsStability: 'medium',
     });
-    const response = await this.client.send(command);
-    for await (const event of response.TranscriptResultStream!) {
+
+    const response = await this.#client.send(command, { abortSignal: this.#controller.signal });
+    for await (const event of response.TranscriptResultStream) {
       const results = event.TranscriptEvent?.Transcript?.Results ?? [];
       for (const result of results) {
         const text = result.Alternatives?.[0]?.Transcript ?? '';
-        if (result.IsPartial) this.onPartialTranscript(text);
-        else this.onFinalTranscript(text);
+        if (result.IsPartial) onPartial(text);
+        else onFinal(text);
       }
     }
   }
+
+  abort() { this.#controller?.abort(); }
 }
 ```
 
-Write an integration test in `TranscribeClient.test.ts` that:
-- Mocks the `TranscribeStreamingClient` to return one partial result and one final result
-- Confirms `onPartialTranscript` is called once and `onFinalTranscript` is called once
+Now extend the `/ws` WebSocket handler in `run.mjs` to accept binary PCM frames and route them through the bridge. **Add to the existing `ws.on('message')` handler** — do not replace the existing `type: "talk"` or `type: "ping"` blocks:
 
-**Evidence required**: `npx vitest run` passing with the mock integration test.
+```javascript
+// In run.mjs → wss.on('connection', (ws) => { ws.on('message', async (raw) => { ...
+// ADD these cases AFTER the existing msg.type checks:
+
+// Binary message = raw PCM Float32Array from browser mic during active speech
+if (raw instanceof Buffer) {
+  const f32 = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
+  // push into the async generator feeding TranscribeBridge
+  currentAudioPush?.(f32);
+  return;
+}
+
+if (msg.type === 'speech-start') {
+  // New utterance: create a generator/bridge pair and start streaming
+  let resolver;
+  const chunks = [];
+  const gen = (async function* () {
+    while (true) {
+      if (chunks.length) { yield new Uint8Array(chunks.shift().buffer); }
+      else await new Promise(r => { resolver = r; });
+    }
+  })();
+  currentAudioPush = (f32) => { chunks.push(f32); resolver?.(); };
+  bridge.startStream(gen, {
+    onPartial: (text) => ws.send(JSON.stringify({ type: 'partial-transcript', text })),
+    onFinal:   (text) => { ws.send(JSON.stringify({ type: 'final-transcript', text })); handleFinal(text, ws); },
+  }).catch(() => {}); // absorb AbortError on interruption
+}
+
+if (msg.type === 'speech-end') {
+  currentAudioPush = null;
+  bridge.abort();
+}
+```
+
+At the top of `run.mjs` (after existing imports), add:
+```javascript
+import { TranscribeBridge } from './transcribe-bridge.mjs';
+const bridge = new TranscribeBridge();
+let currentAudioPush = null; // set when speech is active
+```
+
+**Credentials**: ace-controller reads AWS credentials from environment variables set by `aws-setup.sh` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`). Do not add `get_key()` calls to ace-controller — the AMANDA vault is for Kiro's build-time context, not ace-controller's runtime.
+
+Restart ace-controller with `node run.mjs` and confirm no import errors. Then:
+- Open browser, speak one test sentence
+- Confirm ace-controller logs show partial transcript events
+
+**Evidence required**: ace-controller console output showing partial transcript lines during a real speech test.
 
 ---
 
-### T4 — [CAT 3] Implement Bedrock Converse routing
+### T4 — [CAT 3] Wire Bedrock Converse into ace-controller's transcript handler
 
 **Model: Amazon Nova Pro**
 
-Implement `client-apps/web/src/audio/BedrockRouter.ts`. This takes the final transcript from T3 and calls Amazon Bedrock Converse API to generate EVE's response.
+Implement `client-services/ace-controller/bedrock-router.mjs`:
 
-Read `aws-pipeline-architect` skill section "Amazon Bedrock Converse API" before writing.
-
-Model ID: `amazon.nova-pro-v1:0`  
-Credentials: `get_key("aws")` via AMANDA vault MCP — same pattern as T3.
-
-```typescript
+```javascript
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 
-const SYSTEM_PROMPT = `You are EVE, a real-time digital human companion.
+const SYSTEM_PROMPT = `You are EVE, a real-time digital human companion built by Beryl AI Labs.
 Respond in 1-2 sentences. Be warm, present, and conversational.
 Never describe your own actions. Never say "As an AI."`;
 
 export class BedrockRouter {
-  private client = new BedrockRuntimeClient({ region: 'us-east-1' });
+  #client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
-  async route(transcript: string): Promise<string> {
-    const response = await this.client.send(new ConverseCommand({
-      modelId: 'amazon.nova-pro-v1:0',
+  async route(transcript) {
+    const response = await this.#client.send(new ConverseCommand({
+      modelId: process.env.BEDROCK_MODEL_ID || 'amazon.nova-pro-v1:0',
       messages: [{ role: 'user', content: [{ text: transcript }] }],
       system: [{ text: SYSTEM_PROMPT }],
     }));
@@ -207,39 +318,38 @@ export class BedrockRouter {
 }
 ```
 
-Wire T2 + T3 + T4 together in `client-apps/web/src/audio/AcousticPipeline.ts`:
+Add the `handleFinal` function to `run.mjs` (referenced in T3's `onFinal` handler):
 
-```typescript
-// Orchestrator: MicCapture → VadDetector → TranscribeClient → BedrockRouter → TurnComplete
-export class AcousticPipeline {
-  constructor(
-    private onTurnComplete: (transcript: string, response: string) => void
-  ) {}
+```javascript
+import { BedrockRouter } from './bedrock-router.mjs';
+const bedrockRouter = new BedrockRouter();
 
-  async start(): Promise<void> {
-    const vad = new VadDetector();
-    const router = new BedrockRouter();
-    const transcribe = new TranscribeClient(
-      (partial) => console.log('[partial]', partial),  // TODO WO-3: trigger EVE processing expression
-      async (final) => {
-        const response = await router.route(final);
-        this.onTurnComplete(final, response);
-      }
-    );
-    // MicCapture feeds VadDetector; on speech-start, open Transcribe stream
-    // ... (mic capture glue goes here — use getUserMedia from design.md)
+async function handleFinal(transcript, ws) {
+  const t0 = Date.now();
+  try {
+    const reply = await bedrockRouter.route(transcript);
+    const latencyMs = Date.now() - t0;
+    console.log(`[pipeline-1] transcript="${transcript}" reply="${reply}" latency=${latencyMs}ms`);
+    ws.send(JSON.stringify({ type: 'turn-complete', transcript, reply, latencyMs }));
+    // Also broadcast visemes for EVE's mouth (reuse existing phoneme-direct path)
+    const { frames, durationMs } = phonemeTimeline(reply);
+    broadcast({ type: 'visemes', source: 'pipeline-1', durationMs, frames });
+  } catch (err) {
+    console.error('[pipeline-1] bedrock error', err?.message);
+    ws.send(JSON.stringify({ type: 'turn-complete-error', transcript, error: err?.message }));
   }
 }
 ```
 
-**Manual verification required** (no automated test for mic → real AWS → response):
-- Open THE VANITY in browser (`npm run dev` from `client-apps/web/`)
-- Speak: "Hello EVE, how are you?"
-- Confirm: partial transcript appears in console within 1 second of speech start
-- Confirm: final transcript appears and BedrockRouter returns a response
-- Log timestamps at SpeechStart, FinalTranscript, and TurnComplete — record elapsed times
+**Manual end-to-end verification** (required before marking T4 done):
+1. Start ace-controller: `node run.mjs` from `client-services/ace-controller/`
+2. Start THE VANITY: `npm run dev` from `client-apps/web/`
+3. Open browser, allow microphone, speak: "Hello EVE, how are you?"
+4. Check ace-controller console for this exact log line pattern:
+   `[pipeline-1] transcript="Hello EVE, how are you?" reply="..." latency=<N>ms`
+5. Record the latency value — this is the Pipeline 1 Bedrock baseline
 
-**Evidence required**: Console log output showing the three timestamps and the response text from Bedrock. Paste the output verbatim (do not summarize).
+**Evidence required**: Paste the ace-controller console log line verbatim (transcript + reply + latency). Do not summarize.
 
 ---
 

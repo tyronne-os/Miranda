@@ -28,33 +28,40 @@ miranda-engine (workspace root)
 
 ### Pipeline 1 (AWS-native — build first)
 
+**Critical architectural constraint**: the browser (`client-apps/web/`) has no filesystem or mmap access and cannot read or write `/dev/shm/miranda_bus`. The `ace-controller` Node.js service (`client-services/ace-controller/`, port 8100) is the correct home for all AWS SDK calls. The browser sends raw PCM over the existing WebSocket at `ws://127.0.0.1:8100/ws`; ace-controller handles all cloud calls.
+
 ```
 Browser (client-apps/web/)
     │
-    ├─── getUserMedia() ──→ PCM audio stream (16 kHz, mono, f32)
+    ├─── getUserMedia() ──→ PCM audio (16 kHz, mono, Float32Array)
     │
-    ├─── VAD (energy threshold or WebRTC VAD wasm) ──→ SpeechStart/SpeechEnd events
+    ├─── VadSender (energy threshold VAD)
+    │         ├─── SpeechStart → ws.send({ type: 'speech-start' }) to ace-controller
+    │         ├─── PCM chunks during speech → ws.send(pcm.buffer) [binary frame] to ace-controller
+    │         └─── SpeechEnd → ws.send({ type: 'speech-end' }) to ace-controller
+    │
+    └─── Receives back from ace-controller /ws:
+              ├─── { type: 'partial-transcript', text } → EVE "processing" expression
+              ├─── { type: 'visemes', frames } → mouth animation (existing phoneme-direct path)
+              └─── { type: 'turn-complete', transcript, reply } → EVE response display
+
+ace-controller (client-services/ace-controller/run.mjs — port 8100)
+    │
+    ├─── /ws binary frames → TranscribeBridge (transcribe-bridge.mjs)
     │         │
-    │         └─── on SpeechStart → begin sending PCM chunks via WebSocket
+    │         ├─── Amazon Transcribe Streaming WebSocket → partial + final transcripts
+    │         ├─── partial → broadcast { type: 'partial-transcript' } to browser
+    │         └─── final → handleFinal(transcript, ws)
     │
-    ├─── WebSocket to miranda-supervisor (Axum) ──→ sends AudioChunk structs
-    │
-[miranda-supervisor receives AudioChunk, forwards to Transcribe]
-    │
-    ├─── Amazon Transcribe Streaming (WebSocket) ──→ partial + final transcripts
+    ├─── handleFinal → BedrockRouter (bedrock-router.mjs)
     │         │
-    │         ├─── partial result → VadEvent::PartialTranscript → EVE "processing" expression
-    │         │
-    │         └─── final result → VadEvent::FinalTranscript → Bedrock Converse API call
+    │         ├─── Amazon Bedrock Converse API (amazon.nova-pro-v1:0)
+    │         └─── response → broadcast { type: 'turn-complete' } + phonemeTimeline visemes
     │
-    ├─── Amazon Bedrock Converse API (amazon.nova-pro-v1:0 default)
-    │         │
-    │         └─── response → TurnComplete signal → downstream (WO-3 TTS, WO-5 render)
-    │
-[IPC bus writes — Pipeline 1 uses in-process ring rather than /dev/shm for browser context]
-    │
-    └─── audio_bus: AudioChunk written for logging/debug telemetry (WO-4 will consume)
+    └─── (future) write AudioChunk to /dev/shm/miranda_bus via Rust helper binary (WO-4 concern)
 ```
+
+**The existing ace-controller code to preserve**: `run.mjs` already has `nvidiaChatMessages()`, the `/v1/talk` HTTP endpoint, `phonemeTimeline()`, `broadcast()`, persona loading, and the `/ws` WebSocket handler with `type: "talk"` and `type: "ping"` cases. T3 extends the `ws.on('message')` handler — it does not replace it. T4 adds `handleFinal()` and imports `BedrockRouter` at the top of `run.mjs`.
 
 ### Pipeline 2 (parakeet.cpp + Nemotron-Flash)
 
