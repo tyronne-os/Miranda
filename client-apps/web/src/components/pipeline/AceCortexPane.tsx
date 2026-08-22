@@ -33,7 +33,9 @@ function edgeStyle(kind: string, active: boolean): CSSProperties {
       return { stroke: "#4ec4ff", strokeWidth: 2.35 };
     case "blendshape":
       return { stroke: "#8eb6ff", strokeWidth: 2.35 };
-    case "pixel":
+    case "ipc":
+      return { stroke: "#7ee787", strokeWidth: 2.1 };
+    case "datachannel":
       return { stroke: "#f0c14d", strokeWidth: 2.35 };
     case "clock":
       return { stroke: "#3db4ff", strokeWidth: 1.9 };
@@ -135,7 +137,7 @@ export function AceCortexPane() {
         const active = hot.has(e.source) && hot.has(e.target);
         return {
           ...e,
-          animated: active && (kind === "audio" || kind === "blendshape" || kind === "pixel"),
+          animated: active && (kind === "audio" || kind === "blendshape" || kind === "datachannel" || kind === "ipc"),
           className: edgeClass(kind, active),
           style: edgeStyle(kind, active),
         };
@@ -177,8 +179,8 @@ export function AceCortexPane() {
     <div className="pane-fill cortex-pane">
       <div className="pane-header">
         <div className="pane-title">
-          <strong>ACE Cortex</strong>
-          <span>Understand-Anything topology · All-NVIDIA path</span>
+          <strong>Miranda Cortex</strong>
+          <span>Real signal path · cloud bridge + native harness</span>
         </div>
         <div className="pane-actions">
           <span className="badge live">

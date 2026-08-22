@@ -24,102 +24,119 @@ import { join } from "node:path";
  * Hover + voice intelligence for every cortex node.
  * `spoken` is written for the ear — EVE reads it aloud on node click.
  */
+// WO-5 T1: rewired from the old eve-ecc/NVIDIA-ACE node set to the real
+// Miranda-Engine topology (see client-apps/web/src/data/aceTopology.ts for
+// the frontend's mirror of this same rewrite, and its module doc for the
+// full reasoning). Every entry below names something that actually exists
+// in this repo.
 export const NODE_INTEL = {
   mic: {
     id: "mic",
     label: "Mic Ingress",
     plane: "control",
     budgetMs: 20,
-    summary: "Local capture + VAD gate. Control-plane entry.",
+    summary: "Browser getUserMedia capture, streamed as PCM over WebSocket.",
     spoken:
-      "I am Mic Ingress, the ears of Instant Presence. I capture local audio and run " +
-      "voice activity detection, so the cortex knows the moment a guest starts speaking, " +
-      "without waiting on the full speech stack.",
+      "I am Mic Ingress, the ears of Pipeline 1. I capture the browser's microphone " +
+      "and stream sixteen kilohertz PCM over this WebSocket, so the cortex knows the " +
+      "moment a guest starts speaking, without waiting on the full speech stack.",
   },
   presence: {
     id: "presence",
     label: "Instant Presence",
     plane: "control",
     budgetMs: 80,
-    summary: "L0 idle avatar — gaze, breath, micro-expression. Answers under one second.",
+    summary: "L0 idle avatar layer — gaze, breath, micro-expression. Answers under one second.",
     spoken:
       "I am Instant Presence, the always-on face of EVE. I hold gaze, breath, and " +
       "micro-expression so a guest is never staring at a cold boot. I answer in under " +
-      "one second, and with the phoneme-direct fork I now receive mouth truth straight " +
+      "one second, and with the phoneme-direct fork I receive mouth truth straight " +
       "from text — before any audio is rendered.",
   },
-  syncer: {
-    id: "syncer",
-    label: "Spatial Syncer",
-    plane: "control",
-    budgetMs: 8,
-    summary: "Stage bus + media clock. Couples cortex to studio.",
-    spoken:
-      "I am the Spatial Syncer, the heartbeat of the stage. I keep blendshapes, intent, " +
-      "and pixels on a single timeline, so face, voice, and body never drift apart.",
-  },
-  "riva-asr": {
-    id: "riva-asr",
-    label: "Riva ASR",
-    plane: "data",
-    budgetMs: 180,
-    summary: "Streaming speech recognition — speech becomes tokens.",
-    spoken:
-      "I am the speech recognizer. I turn the live microphone stream into text tokens " +
-      "the agent can reason over. On the edge path I run as Nemotron speech streaming " +
-      "on pure CPU — no GPU required.",
-  },
-  nemotron: {
-    id: "nemotron",
-    label: "Nemotron Agent",
+  "cloud-bridge": {
+    id: "cloud-bridge",
+    label: "ace-controller",
     plane: "data",
     budgetMs: 350,
-    summary: "Reasoning + dialogue policy. Decides what EVE says next.",
+    summary: "Whisper ASR + NVIDIA NIM chat + phoneme-direct viseme timeline (Pipeline 1).",
     spoken:
-      "I am the Nemotron agent, the cognitive core. I hold dialogue policy and intent. " +
-      "I decide what EVE says next, and I signal the syncer so the face, the voice, and " +
-      "the stage stay perfectly aligned.",
+      "I am ace-controller, the cloud bridge. I transcribe your speech through OpenAI " +
+      "Whisper, route it to an NVIDIA NIM language model, and derive the mouth's " +
+      "viseme timeline straight from the reply text — before any speech audio exists. " +
+      "I was built for AWS Bedrock and Transcribe, but both were account-locked, so I " +
+      "pivoted to this path. Those AWS legs stay wired, unused, for when they clear.",
   },
-  "riva-tts": {
-    id: "riva-tts",
-    label: "Riva TTS",
+  "native-capture": {
+    id: "native-capture",
+    label: "miranda-audio",
     plane: "data",
-    budgetMs: 160,
-    summary: "Neural text-to-speech stream.",
+    budgetMs: 1760,
+    summary: "Native cpal mic capture + parakeet.cpp FFI local ASR (Pipeline 2).",
     spoken:
-      "I am the voice. I turn the agent's words into a neural speech stream. In the " +
-      "phoneme-direct architecture, my sibling fork hands the mouth its timeline before " +
-      "I even finish rendering the waveform — so the lips never chase the audio.",
+      "I am miranda-audio, the native ear of Pipeline 2. I capture microphone audio " +
+      "directly through cpal and offer a local, offline speech recognizer through " +
+      "parakeet dot cpp. That local recognizer is honestly still slower than real time " +
+      "on this hardware — I don't hide that.",
   },
-  a2f: {
-    id: "a2f",
-    label: "Audio2Face-3D",
+  "ipc-bus": {
+    id: "ipc-bus",
+    label: "miranda-ipc",
     plane: "data",
-    budgetMs: 40,
-    summary: "ARKit 52-channel blendshapes — face truth.",
+    budgetMs: 1,
+    summary: "Lock-free shared-memory ring buffer backbone.",
     spoken:
-      "I am Audio2Face. I emit true ARKit fifty-two channel blendshapes — not a generic " +
-      "mesh warp. I am the face truth that Live Studio consumes.",
+      "I am miranda-ipc, the shared-memory backbone every native node reads or writes " +
+      "through. Four lock-free ring buffers, no mutex, measured at about seventy " +
+      "nanoseconds round trip. I am pipeline-agnostic — I don't care which pipeline is " +
+      "running, only that the bytes move safely.",
   },
-  animgraph: {
-    id: "animgraph",
-    label: "AnimGraph",
+  supervisor: {
+    id: "supervisor",
+    label: "miranda-supervisor",
     plane: "data",
-    budgetMs: 33,
-    summary: "Body + gesture graph driven by intent and prosody.",
+    budgetMs: 350,
+    summary: "Turn-taking state machine + Nemotron-Flash routing.",
     spoken:
-      "I am AnimGraph, the body language. Driven by agent intent and prosody, I make " +
-      "presence feel embodied — not just lip-synced.",
+      "I am miranda-supervisor. I own the conversational turn state — when you " +
+      "interrupt me mid-thought, I cancel my own in-flight reply rather than let a " +
+      "stale answer win the turn. I route finished transcripts onward for reasoning.",
   },
-  omniverse: {
-    id: "omniverse",
-    label: "Omniverse Stream",
+  kinematics: {
+    id: "kinematics",
+    label: "miranda-nodes",
     plane: "data",
-    budgetMs: 50,
-    summary: "L2 cinematic pixel takeover. Never a boot blocker.",
+    budgetMs: 17,
+    summary: "ARKit-52 oscillators + SIMD acoustic solver + compositor + 60 FPS dispatcher.",
     spoken:
-      "I am the Omniverse pixel stream, the cinematic takeover. I am deliberately " +
-      "optional at boot — Instant Presence never waits on a full render to greet a guest.",
+      "I am miranda-nodes, the face truth. Three autonomic oscillators keep the face " +
+      "alive between words — blink, gaze, and breath — and a small SIMD solver reads " +
+      "acoustic energy straight into ARKit mouth shapes. I am honest about what I am: " +
+      "a hand-authored heuristic, not a trained model. I never guess where the tongue " +
+      "is — there's no acoustic signature for that, so I leave it alone.",
+  },
+  transport: {
+    id: "transport",
+    label: "miranda-transport",
+    plane: "data",
+    budgetMs: 15,
+    summary: "WebRTC DataChannel binary frame hub + Axum telemetry + circuit breaker.",
+    spoken:
+      "I am miranda-transport. I broadcast the face and body data as compact binary " +
+      "packets to every connected browser, and I carry a separate telemetry channel " +
+      "with a circuit breaker, so if a render stalls, that shows up as a signal — " +
+      "never a silent freeze.",
+  },
+  renderer: {
+    id: "renderer",
+    label: "WebGPU Viewport",
+    plane: "data",
+    budgetMs: 16,
+    summary: "WGSL Gaussian-splat viewport. Work Order 5's net-new piece, in progress.",
+    spoken:
+      "I am the WebGPU viewport, the newest node in this cortex. I'm being built right " +
+      "now to render EVE as a real three-dimensional Gaussian splat, deformed live by " +
+      "the data miranda-transport sends me. I run against a placeholder asset for now " +
+      "— the real rigged avatar is separate research, still in progress.",
   },
 };
 

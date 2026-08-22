@@ -493,7 +493,7 @@ export function StudioAdminDrawer({ open, onClose }: Props) {
               </div>
             )}
             <p className="admin-note">
-              Speech Recognition (browser) + NVIDIA Nemotron + Text-to-Speech. Instant Presence L1 data plane.
+              Whisper ASR (ace-controller) + NVIDIA NIM + phoneme-direct viseme timeline. Pipeline 1, Instant Presence L1 data plane.
             </p>
           </div>
 
@@ -578,7 +578,7 @@ export function StudioAdminDrawer({ open, onClose }: Props) {
                 <strong>{contract.requiresBlendshapes ? "required" : "still idle"}</strong>
               </li>
               <li>
-                Omniverse stream{" "}
+                WebGPU splat render{" "}
                 <strong>{contract.requiresPixelStream ? "cinematic on" : "not required"}</strong>
               </li>
             </ul>

@@ -16,15 +16,19 @@ export type AceFlowNodeData = {
   hovered?: boolean;
 };
 
+// WO-5 T1: rewired for the real Miranda-Engine NodeKind set. TypeScript's
+// Record<NodeKind, string> makes this a compile error if a kind is ever
+// added or removed without a matching glyph — that's load-bearing, not
+// incidental.
 const KIND_GLYPH: Record<NodeKind, string> = {
   ingress: "IN",
-  asr: "ASR",
-  agent: "LLM",
-  tts: "TTS",
-  a2f: "A2F",
-  animgraph: "AG",
-  omniverse: "OV",
-  bus: "BUS",
+  "native-capture": "CAP",
+  "ipc-bus": "IPC",
+  kinematics: "KIN",
+  supervisor: "SUP",
+  transport: "NET",
+  "cloud-bridge": "AWS",
+  renderer: "GPU",
   presence: "L0",
 };
 

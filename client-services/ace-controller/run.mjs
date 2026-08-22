@@ -226,16 +226,18 @@ function startNodeMock() {
     talking: false,
   };
 
+  // WO-5 T1: rewired to match the real Miranda-Engine topology (see
+  // presence_kit.mjs's NODE_INTEL and client-apps/web/src/data/aceTopology.ts).
   const nodes = [
     "mic",
     "presence",
-    "syncer",
-    "riva-asr",
-    "nemotron",
-    "riva-tts",
-    "a2f",
-    "animgraph",
-    "omniverse",
+    "cloud-bridge",
+    "native-capture",
+    "ipc-bus",
+    "supervisor",
+    "kinematics",
+    "transport",
+    "renderer",
   ];
 
   // ── Session telemetry — the reporting spine documenting both sides ──
@@ -284,15 +286,20 @@ function startNodeMock() {
 
   function snapshot() {
     const t = Date.now() - state.startedAt;
+    // WO-5 T1: rewired for the real node set. "mic"/"presence" stay the
+    // always-hot control plane. "cloud-bridge" plays the role "nemotron"
+    // used to (the reasoning hop that needs the NVIDIA key warm). "renderer"
+    // (WebGPU viewport, not yet built) plays the role "omniverse" used to —
+    // deliberately slow to warm, never a boot blocker.
     const healthFor = (id) => {
-      if (["mic", "presence", "syncer"].includes(id)) return state.talking ? "hot" : "ready";
-      if (nvidiaKey && id === "nemotron") {
+      if (["mic", "presence"].includes(id)) return state.talking ? "hot" : "ready";
+      if (nvidiaKey && id === "cloud-bridge") {
         if (state.stage !== "L0" || state.talking) return "hot";
         return state.warmProgress > 0.35 ? "ready" : "warming";
       }
       if (state.stage === "L0") return state.warmProgress > 0.5 ? "warming" : "cold";
       if (state.stage === "L1") {
-        if (id === "omniverse") return "warming";
+        if (id === "renderer") return "warming";
         return "hot";
       }
       return "hot";
@@ -536,7 +543,7 @@ function startNodeMock() {
     return (
       `${PERSONA.text}\n\n` +
       `## YOUR LIVE STATE (this turn)\n` +
-      `- Presence stage: ${snap.stage} (${snap.stage === "L0" ? "idle presence, control plane only" : snap.stage === "L1" ? "Audio2Face live" : "Omniverse cinematic"})\n` +
+      `- Presence stage: ${snap.stage} (${snap.stage === "L0" ? "idle presence, control plane only" : snap.stage === "L1" ? "live signal path" : "WebGPU splat render"})\n` +
       `- Control-plane latency: ${snap.controlMs}ms\n` +
       `- Warm progress: ${Math.round(snap.warmProgress * 100)}%\n` +
       `- Nodes live: ${hot.map((id) => NODE_INTEL[id].label).join(", ") || "none"}\n` +

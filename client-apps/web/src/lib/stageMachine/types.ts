@@ -4,20 +4,31 @@ export type PresenceStage = "L0" | "L1" | "L2";
 
 export type PlaneMode = "control" | "data";
 
+// WO-5 T1: rewired from the old eve-ecc/NVIDIA-ACE node set (ingress/asr/
+// agent/tts/a2f/animgraph/omniverse/bus/presence) to the real Miranda-Engine
+// architecture. Every value below corresponds to an actual crate, an actual
+// still-live Node.js service, or an actual not-yet-built browser component —
+// no role labels for pipeline stages that don't exist in this codebase.
 export type NodeKind =
-  | "ingress"
-  | "asr"
-  | "agent"
-  | "tts"
-  | "a2f"
-  | "animgraph"
-  | "omniverse"
-  | "bus"
-  | "presence";
+  | "ingress" // browser mic capture (getUserMedia) — client-apps/web/src/audio/MicCapture.ts
+  | "native-capture" // miranda-audio: cpal mic capture + parakeet.cpp FFI (Pipeline 2)
+  | "ipc-bus" // miranda-ipc: lock-free SHM ring buffer, /dev/shm/miranda_bus
+  | "kinematics" // miranda-nodes: oscillators + acoustic solver + compositor + 60fps dispatcher
+  | "supervisor" // miranda-supervisor: turn-taking state machine + Nemotron-Flash routing
+  | "transport" // miranda-transport: WebRTC DataChannel hub + Axum telemetry (WO-4)
+  | "cloud-bridge" // client-services/ace-controller (Node.js): Pipeline 1 — Whisper ASR + NVIDIA NIM
+  | "renderer" // WO-5: WebGPU/WGSL Gaussian-splat viewport (browser)
+  | "presence"; // browser-side L0 idle presence layer (client-apps/web/src/components/eve)
 
 export type NodeHealth = "cold" | "warming" | "ready" | "hot" | "degraded" | "error";
 
-export type EdgeKind = "audio" | "text" | "blendshape" | "anim" | "pixel" | "control" | "clock";
+// WO-5 T1: `pixel` and `anim` were ACE/Omniverse-specific (cinematic
+// pixel takeover, gesture-graph pose) and have no real-crate equivalent in
+// this codebase, so they're dropped rather than reused for something they
+// don't describe. `ipc` (miranda-ipc SHM ring traffic) and `datachannel`
+// (miranda-transport's binary MRD1 broadcast) are added because the real
+// signal path has legs neither audio/text/blendshape/control/clock covers.
+export type EdgeKind = "audio" | "text" | "blendshape" | "ipc" | "datachannel" | "control" | "clock";
 
 export interface AceNodeDef {
   id: string;

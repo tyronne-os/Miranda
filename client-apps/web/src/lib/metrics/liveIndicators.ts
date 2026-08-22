@@ -31,17 +31,26 @@ import type {
 
 const METER_IDS: LiveMeterId[] = ["warm", "lag", "continuity", "presence", "gpu"];
 
-/** Relative GPU weight per ACE node (share of full cinematic envelope). */
+// WO-5 T1: rewired for the real topology. Weight reasoning per node:
+// - mic/presence/cloud-bridge/native-capture/ipc-bus/supervisor stay light —
+//   none of them touch a GPU (CPU capture, SHM, turn-state, cloud API calls).
+// - kinematics does real per-frame SIMD work but on the CPU (measured 8.9us/
+//   frame in miranda-nodes' dispatcher benchmark) — nonzero but small.
+// - transport is network/serialization bound, not GPU bound.
+// - renderer is the only node that is actually GPU work (WebGPU/WGSL splat
+//   rendering) and carries the dominant share, same role "omniverse" used
+//   to play in the old envelope.
+/** Relative GPU weight per Miranda-Engine node (share of full render envelope). */
 const NODE_GPU_WEIGHT: Record<string, number> = {
   mic: 0.02,
-  presence: 0.04,
-  syncer: 0.03,
-  "riva-asr": 0.11,
-  nemotron: 0.16,
-  "riva-tts": 0.1,
-  a2f: 0.27,
-  animgraph: 0.08,
-  omniverse: 0.42,
+  presence: 0.05,
+  "cloud-bridge": 0.08,
+  "native-capture": 0.05,
+  "ipc-bus": 0.01,
+  supervisor: 0.04,
+  kinematics: 0.13,
+  transport: 0.07,
+  renderer: 0.55,
 };
 
 const FULL_ENVELOPE = Object.values(NODE_GPU_WEIGHT).reduce((a, b) => a + b, 0);
@@ -237,14 +246,18 @@ function computeContinuityRaw(input: MetricsTickInput, baseline: Record<string, 
   const { nodes, blend, talking, micArmed, presenceEnergy, stage, warmProgress } = input;
   const h = (id: string) => healthScore(nodes[id]?.health);
 
-  // Cognitive: agent path + reasoning readiness
-  const agentPath = (h("riva-asr") + h("nemotron") + h("syncer")) / 3;
+  // Cognitive: reasoning path readiness. WO-5 T1: "riva-asr"/"nemotron"/
+  // "syncer" no longer exist — the reasoning path is cloud-bridge (Whisper
+  // + NVIDIA NIM) and supervisor (turn-taking + routing).
+  const agentPath = (h("cloud-bridge") + h("supervisor")) / 2;
   const stageCog =
     stage === "L0" ? 0.55 + warmProgress * 0.25 : stage === "L1" ? 0.82 : 0.9;
   const cognitive = clamp01(agentPath * 0.7 + stageCog * 0.3);
 
-  // Conversational: ears/voice + talk alignment
-  const speechPath = (h("mic") + h("riva-asr") + h("riva-tts") + h("a2f")) / 4;
+  // Conversational: ears/voice + talk alignment. WO-5 T1: mic + cloud-bridge
+  // (ASR+TTS-equivalent path) + kinematics (face truth) replace the old
+  // riva-asr/riva-tts/a2f trio.
+  const speechPath = (h("mic") + h("cloud-bridge") + h("kinematics")) / 3;
   const jaw = blend.weights.jawOpen ?? 0;
   const visemeLive = blend.viseme !== "sil" ? 1 : 0;
   const talkAlign = talking
@@ -289,7 +302,10 @@ function computePresenceRaw(input: MetricsTickInput) {
   const { nodes, controlMs, controlBudgetMs, stage, talking, presenceEnergy } = input;
   const controlOk = clamp01(1 - controlMs / Math.max(1, controlBudgetMs));
   const presenceNode = healthScore(nodes.presence?.health);
-  const syncNode = healthScore(nodes.syncer?.health);
+  // WO-5 T1: "syncer" (Spatial Syncer) doesn't exist in the real topology —
+  // ipc-bus is the closest equivalent (the shared clock/transport substrate
+  // every native node reads/writes through).
+  const syncNode = healthScore(nodes["ipc-bus"]?.health);
   const micNode = healthScore(nodes.mic?.health);
   // Instant Presence hard rule: greetability never waits on data plane
   const greet =
@@ -323,12 +339,14 @@ function computeGpu(input: MetricsTickInput, sessionIntegral: number, dtSec: num
     const util = healthGpuFactor(rt?.health) * (0.35 + (rt?.load ?? 0) * 0.65);
     let nodeDuty = def.plane === "control" ? 0.85 : stageDuty;
 
-    // Omniverse only bites hard on L2 / L2 target
-    if (def.id === "omniverse") {
+    // WO-5 T1: the WebGPU renderer only bites hard on L2 / L2 target — same
+    // role "omniverse" played in the old envelope (deliberately optional at
+    // boot, never a greet-blocker).
+    if (def.id === "renderer") {
       nodeDuty = stage === "L2" ? 1 : targetStage === "L2" ? 0.35 + warmProgress * 0.4 : warmProgress * 0.12;
     }
-    // A2F / anim scale with L1+
-    if (def.id === "a2f" || def.id === "animgraph") {
+    // kinematics (face truth) scales with L1+, same role a2f/animgraph played.
+    if (def.id === "kinematics") {
       nodeDuty = stage === "L0" ? 0.15 + warmProgress * 0.35 : stageDuty;
     }
 

@@ -35,7 +35,10 @@ export function getContract(stage: PresenceStage): StageContract {
 
 /** Instant Presence gate: control nodes must be ready/hot before any stage holds. */
 export function controlPlaneReady(nodes: Record<string, NodeRuntime>): boolean {
-  const controlIds = ["mic", "presence", "syncer"];
+  // WO-5 T1: rewired for the real topology — "syncer" (Spatial Syncer) no
+  // longer exists as a node; the L0 control plane is just mic capture + the
+  // presence layer itself.
+  const controlIds = ["mic", "presence"];
   return controlIds.every((id) => {
     const h = nodes[id]?.health;
     return h === "ready" || h === "hot";
