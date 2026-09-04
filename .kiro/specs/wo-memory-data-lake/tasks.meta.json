@@ -1,0 +1,108 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Vault directory structure + encryption init [CAT 1]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515707683
+      },
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515723294
+      }
+    ],
+    "2. Mood classifier (local model) [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515707872
+      }
+    ],
+    "3. Entity extractor (NER) [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515708471
+      }
+    ],
+    "4. Neo4j local Podman container setup [CAT 1]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515708655
+      }
+    ],
+    "5. Neo4j graph schema creation [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515708834
+      }
+    ],
+    "6. Neo4j writer module [CAT 3]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515709030
+      }
+    ],
+    "7. DuckDB schema + initialization [CAT 1]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515709199
+      }
+    ],
+    "8. Event writer (core pipeline) [CAT 3]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515709401
+      }
+    ],
+    "9. Obsidian vault writer [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515709951
+      }
+    ],
+    "10. Memory retriever (query engine) [CAT 3]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515710111
+      }
+    ],
+    "11. System prompt injection (LLM integration) [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515710284
+      }
+    ],
+    "12. Avatar ARB color binding [CAT 2]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515710439
+      }
+    ],
+    "13. Integration tests [CAT 3]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515710650
+      }
+    ],
+    "14. Performance benchmarks & documentation [CAT 1]": [
+      {
+        "executionId": "f5b4b6e0-7a15-4eb6-be71-aff89db4e85e",
+        "chatSessionId": "sess_22717bea-1f94-4409-b4f6-caa3809374da",
+        "timestamp": 1788515710814
+      }
+    ]
+  }
+}

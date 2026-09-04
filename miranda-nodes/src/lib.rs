@@ -29,8 +29,11 @@
 pub mod blink;
 pub mod breath;
 pub mod compositor;
+pub mod conversation;
 pub mod dispatcher;
+pub mod forge;
 pub mod gaze;
+pub mod memory;
 pub mod solver;
 pub mod verify;
 pub mod viseme;

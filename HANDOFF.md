@@ -284,3 +284,43 @@ Every commit to this repo updates this **HANDOFF.md** with:
 - **Email:** contact@beryllabs.com
 
 Happy streaming! 🎬✨
+
+---
+
+## Session Status Update — Sep 4, 2026, 08:40 CDT
+
+### Current Bottleneck
+
+`cargo build -p miranda-nodes` has been running since **07:23 CDT** (started PID 589828) and is still compiling `libduckdb-sys` — the bundled DuckDB C++ source tree gets compiled from scratch on first build (no prebuilt binary), and this is the single largest time cost in the build. As of 08:40 CDT it is actively progressing (verified via live `cc1plus` processes compiling different `.cpp` translation units each check, not stalled).
+
+**Root cause of tonight's slowdowns (non-network, non-security):**
+1. `duckdb-sys` compiles the full DuckDB C++ engine from source — this is a known multi-minute cost for a cold build, independent of machine load.
+2. Multiple redundant `cargo build` invocations were started in parallel earlier in the session, causing CPU contention across ~9 competing processes. Killed; now a single build process is running.
+3. Numerous tool-call aborts ("aborted by user") during the session were client-side cancellations (new messages sent while a command was mid-flight, plus one page reload) — not a security compromise. A full process/listener/extension audit was run and returned clean (see below).
+
+### Security Audit Summary (completed this session)
+- Found and removed `listener_watchdog.py` (a defensive allowlist-based rogue-socket killer the user had written earlier, never armed) — deleted per user request.
+- Full listening-socket and established-connection review: no unauthorized listeners, no unexpected outbound connections beyond known apps (Opera, Kiro, Claude, Hugging Face CLI).
+- Verified `sshd` is not installed on this machine at all.
+- CUPS/printing: user requested removal; requires interactive sudo (not completable via agent — provided manual command for user's own terminal).
+- Chrome extension concern: no Chrome installed; Opera's 6 extensions are all Opera-signed built-ins (Rich Hints Agent, Continue on Support, Opera AI, 2 themes, 1 localized component) — nothing third-party.
+- Playwright/headless Chromium cache traced to the `saoudrizwan.claude-dev` (Cline) VS Code Insiders extension.
+- **VS Code Insiders fully removed** (946MB, including Cline) per user request — no installed package existed (portable/already-uninstalled binary), so leftover `~/.vscode-insiders` and `~/.vscode-insiders-shared` config dirs were deleted directly.
+- Full process audit: zero processes running from deleted binaries, zero live curl/wget processes, all ~529 running processes traced to verified binary paths (system packages, snap packages, or known user apps). No malware found.
+
+### Outstanding Build Work (blocking Phase One compile)
+14 stub `.rs` files were created to unblock the `miranda-nodes` crate build (files declared in `mod.rs` but missing from disk):
+- `conversation/`: state_machine.rs, anticipation.rs, interest_model.rs, knowledge_updater.rs, persona_injection.rs, response_tuning.rs, autonomy_calibration.rs, partnership_tracker.rs, prompt_builder.rs
+- `forge/`: naming.rs, compatibility.rs, gpu_provisioner.rs, finetune_pipeline.rs, merge_pipeline.rs
+
+These are minimal compiling stubs, not final implementations. Once `cargo build -p miranda-nodes` succeeds, each needs real logic per `wo-conversational-intelligence` and Model Forge design docs, plus the critical non-negotiable invariants:
+- `autonomy_calibration.rs`: floor categories (DestructiveAtScale, ProductionImpacting, HighBlastRadius) must never resolve to Autonomous — structural enforcement.
+- `partnership_tracker.rs`: banned dependency/guilt-language patterns must be filtered before any acknowledgment surfaces.
+
+### Next Steps
+1. Let current `cargo build -p miranda-nodes` finish (no parallel builds, no interruption).
+2. Fix any compile errors surfaced.
+3. Implement real logic for the 14 stub files.
+4. `cargo build --workspace` then `cargo test -p miranda-nodes`.
+5. Manual step still needed from user (requires interactive sudo): purge CUPS per command provided earlier in session.
+
