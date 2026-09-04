@@ -324,3 +324,29 @@ These are minimal compiling stubs, not final implementations. Once `cargo build 
 4. `cargo build --workspace` then `cargo test -p miranda-nodes`.
 5. Manual step still needed from user (requires interactive sudo): purge CUPS per command provided earlier in session.
 
+
+---
+
+## Session Status Update — Sep 4, 2026, 09:57 CDT — BOTTLENECK CLEARED
+
+### Build Status: PASSING
+
+`cargo build -p miranda-nodes` now completes successfully in 14.74s (once duckdb-sys's one-time C++ compile was cached). Verified via fresh `.rlib` artifact timestamp (09:56 CDT) matching build completion.
+
+### What actually happened
+1. The `libduckdb-sys` C++ compile (bundled DuckDB source, ~280 object files) was the real time cost — not a hang, not an interruption, just a large one-time native compile. It completed successfully around 09:54 CDT.
+2. Once that finished, a real Rust type error surfaced in `miranda-nodes/src/memory/duckdb_writer.rs`: `Vec<String>` was passed directly into DuckDB's `params!` macro for the `entities` and `mood_contexts` list columns, but `duckdb-rs` does not implement `ToSql` for `Vec<String>`.
+3. **Fix applied:** wrapped both list values in `duckdb::types::Value::List(vec![Value::Text(...)])`, which does implement `ToSql`. This matches how `duckdb-rs` expects to bind DuckDB's native `VARCHAR[]` list columns.
+4. Rebuilt — compiles clean, no errors, no warnings blocking the build.
+
+### Current verified state
+- `cargo build -p miranda-nodes`: **PASSING**
+- All 14 stub files (conversation/, forge/) + full memory module (obsidian_writer, retriever, prompt_injection, duckdb_writer, neo4j_writer, event_writer, entity_extractor, mood_classifier): **compiling cleanly**
+- `duckdb_writer.rs` has a real integration test (`writes_and_queries_real_duckdb_rows`) against a temp DuckDB file with the live schema — not yet executed this session, next step below
+
+### Immediate Next Steps
+1. Run `cargo test -p miranda-nodes` to verify the duckdb_writer integration test and any other existing tests actually pass (not just compile).
+2. Run `cargo build --workspace` to confirm no other crate in the workspace is broken.
+3. Begin replacing the 14 stub files' placeholder logic with real implementations per `wo-conversational-intelligence` and `wo-model-forge` design docs — starting with the two non-negotiable invariant modules: `autonomy_calibration.rs` and `partnership_tracker.rs`.
+4. User's manual step still outstanding (needs interactive sudo, cannot be done via agent): CUPS purge commands provided earlier in session.
+

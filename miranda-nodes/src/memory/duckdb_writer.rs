@@ -12,7 +12,7 @@
 //! rather than held open across awaits here.
 
 use chrono::{DateTime, Utc};
-use duckdb::{params, Connection};
+use duckdb::{params, Connection, types::Value};
 
 use super::entity_extractor::Entity;
 use super::mood_classifier::MoodState;
@@ -56,6 +56,7 @@ impl DuckDbWriter {
         let conn = self.connect()?;
 
         let entity_names: Vec<String> = entities.iter().map(|e| e.entity_name.clone()).collect();
+        let entity_names_value = Value::List(entity_names.into_iter().map(Value::Text).collect());
 
         conn.execute(
             "INSERT INTO events (event_id, timestamp, event_type, user_message, \
@@ -68,7 +69,7 @@ impl DuckDbWriter {
                 event_type,
                 user_message,
                 miranda_response,
-                entity_names,
+                entity_names_value,
                 mood_state.as_str(),
                 mood_state.color_hex(),
                 Option::<String>::None,
@@ -88,7 +89,7 @@ impl DuckDbWriter {
                     entity.entity_type.as_str(),
                     timestamp.to_rfc3339(),
                     timestamp.to_rfc3339(),
-                    vec![mood_state.as_str().to_string()],
+                    Value::List(vec![Value::Text(mood_state.as_str().to_string())]),
                 ],
             )?;
         }
