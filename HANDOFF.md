@@ -489,3 +489,25 @@ All 14 files that were blocking `cargo build -p miranda-nodes` at the start of t
 ### Recommended next milestone
 Wire a minimal real path: `client-apps/web/` (or a simple CLI) → Bedrock/Polly (Pipeline 1, already speced) → the real `miranda-nodes` conversation modules (mood/state/prompt_builder) → back out as a response. That is the smallest change that turns "291 tests pass" into "you can actually have a conversation with Miranda and see her mood/state/persona react in real time." Everything built tonight is the tested foundation that wiring would sit on top of — none of it is wasted, but none of it is directly usable by a human yet without that integration step.
 
+
+---
+
+## Verbatim Status Summary (as given to the user, Sep 4, 2026)
+
+**What's real and verified (backend logic library):**
+
+- `miranda-nodes` crate: 291+ tests passing, covering memory (Neo4j/DuckDB/Obsidian writers), conversation intelligence (mood, state, personas, autonomy floor, partnership tracking), and Model Forge (naming, compatibility, GPU cost gating, job orchestration)
+- This is a Rust library crate — functions and types, not a running application
+
+**What's missing to actually "test the app":**
+
+- No entry point that ties these modules together into a live process. There's no main.rs that starts a server, opens a mic, connects to Bedrock/an LLM, and streams a response — the conversation intelligence modules are real but nothing currently calls them in sequence against live user input.
+- No UI. THE VANITY web client (client-apps/web/) — not touched this session. That's what you'd actually open in a browser to talk to Miranda.
+- No wired connection between the AWS pipeline (Transcribe/Bedrock/Polly) from Pipeline 1 and these newly-built Rust conversation modules. They exist in parallel, not integrated.
+- Model Forge's actual training/merge execution is explicitly stubbed — no live GPU, no peft/mergekit run has happened.
+- The "sovereign action layer" and news-digest loop requested are still just a written plan, not code.
+
+What you could technically do right now: run `cargo test` yourself and see the same passing results, or run the benchmark binary — but that's verifying code correctness, not "testing the app" in the sense of having a conversation with Miranda.
+
+**Honest answer: no, you don't have a testable app yet.** What exists is a well-tested backend foundation. To get to something you can actually talk to, the next real milestone is wiring `client-apps/web/` (or a minimal CLI) to the Bedrock/Polly pipeline and calling into these Rust conversation modules for real.
+
