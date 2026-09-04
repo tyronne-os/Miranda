@@ -16,6 +16,7 @@ pub mod compatibility;
 pub mod finetune_pipeline;
 pub mod gpu_provisioner;
 pub mod job_parser;
+pub mod job_orchestrator;
 pub mod merge_pipeline;
 pub mod model_registry;
 pub mod naming;
