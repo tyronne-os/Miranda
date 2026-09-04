@@ -350,3 +350,27 @@ These are minimal compiling stubs, not final implementations. Once `cargo build 
 3. Begin replacing the 14 stub files' placeholder logic with real implementations per `wo-conversational-intelligence` and `wo-model-forge` design docs — starting with the two non-negotiable invariant modules: `autonomy_calibration.rs` and `partnership_tracker.rs`.
 4. User's manual step still outstanding (needs interactive sudo, cannot be done via agent): CUPS purge commands provided earlier in session.
 
+
+---
+
+## Session Status Update — Sep 4, 2026, 10:15 CDT — ALL TESTS PASSING
+
+### Verified via real test run: 164 passed, 0 failed, 2 ignored (`cargo test -p miranda-nodes`)
+
+Two real bugs found and fixed after the build cleared:
+
+1. **`duckdb_writer.rs`** — `duckdb-rs` 1.10505.0 does not support binding native `LIST` parameters (confirmed by tracing the panic to `ToSqlConversionFailure("binding List parameters is not yet supported")` in the driver source). Fixed by storing the `entities` and `mood_contexts` columns as JSON-encoded `VARCHAR` instead of DuckDB `VARCHAR[]`, serialized/deserialized with `serde_json`. Schema updated in both the test's inline schema and the real `scripts/duckdb-init.sh`.
+2. **`neo4j_writer.rs`** — the `exhausts_retries_against_unreachable_host` test asserted `connect().await.is_err()`, but `neo4rs::Graph::new` pools connections lazily and does not fail at connect time against a closed port. Rewrote the test to actually exercise `write_conversation`'s retry loop (3 retries, 5ms backoff) and assert `Neo4jError::RetriesExhausted { attempts: 3, .. }` — this is the real behavior the module needs to guarantee per design.md's error-handling contract (JSONL log is source of truth if graph writes are exhausted).
+
+Both fixes verified with real `cargo test` output, not code-review confidence.
+
+### Verified test coverage includes
+- Memory: mood classifier (latency + accuracy), neo4j writer (schema shape + real retry exhaustion), duckdb writer (real temp-DB round trip)
+- Conversation: solver (SIMD blendshape/viseme DSP — 20+ tests covering additivity, attack/release timing, band selectivity, determinism, autonomic-channel isolation), viseme mapping, 60Hz dispatcher cadence
+- Real-time verification: `tests/rt_verification.rs` — 60fps acceptance criteria against a real shared-memory bus, velocity clamping on frames read back from shm
+
+### Next Steps
+1. `cargo build --workspace` to confirm no other crate broke.
+2. Begin real implementations for the 14 stub files (currently placeholders), starting with `autonomy_calibration.rs` and `partnership_tracker.rs` (the two non-negotiable invariant modules).
+3. User's outstanding manual step: CUPS purge (needs interactive sudo, commands provided earlier).
+

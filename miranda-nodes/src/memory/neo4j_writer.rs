@@ -264,15 +264,34 @@ mod tests {
     }
 
     /// Real integration test exercising retry-with-backoff against a
-    /// deliberately unreachable Bolt address, verifying the writer
-    /// exhausts retries and returns an error instead of hanging or
+    /// deliberately unreachable Bolt address. `neo4rs::Graph::new` pools
+    /// connections lazily, so `connect()` itself succeeds even against a
+    /// closed port; the actual failure only surfaces once a query is
+    /// attempted. This verifies `write_conversation`'s retry loop runs to
+    /// `max_retries` and returns `RetriesExhausted` instead of hanging or
     /// silently succeeding.
     #[tokio::test]
     async fn exhausts_retries_against_unreachable_host() {
-        let connect = Neo4jWriter::connect("bolt://127.0.0.1:1", "neo4j", "mirandamemory").await;
-        // neo4rs may fail fast at connect time against a closed port,
-        // which itself proves the error path works without needing the
-        // write-level retry loop.
-        assert!(connect.is_err());
+        let writer = Neo4jWriter::connect("bolt://127.0.0.1:1", "neo4j", "mirandamemory")
+            .await
+            .expect("Graph::new pools lazily and should not fail before a query is run")
+            .with_retry_policy(3, Duration::from_millis(5));
+
+        let entities: Vec<Entity> = Vec::new();
+        let record = ConversationRecord {
+            conversation_id: uuid::Uuid::new_v4(),
+            timestamp: Utc::now(),
+            user_message: "unreachable host test",
+            miranda_response: "n/a",
+            mood_state: MoodState::Curiosity,
+            intimacy_level: None,
+            entities: &entities,
+        };
+
+        let result = writer.write_conversation(&record).await;
+        match result {
+            Err(Neo4jError::RetriesExhausted { attempts, .. }) => assert_eq!(attempts, 3),
+            other => panic!("expected RetriesExhausted after 3 attempts, got {other:?}"),
+        }
     }
 }

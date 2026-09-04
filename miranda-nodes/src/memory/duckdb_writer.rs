@@ -12,7 +12,7 @@
 //! rather than held open across awaits here.
 
 use chrono::{DateTime, Utc};
-use duckdb::{params, Connection, types::Value};
+use duckdb::{params, Connection};
 
 use super::entity_extractor::Entity;
 use super::mood_classifier::MoodState;
@@ -56,7 +56,12 @@ impl DuckDbWriter {
         let conn = self.connect()?;
 
         let entity_names: Vec<String> = entities.iter().map(|e| e.entity_name.clone()).collect();
-        let entity_names_value = Value::List(entity_names.into_iter().map(Value::Text).collect());
+        // duckdb-rs does not yet support binding native LIST parameters
+        // (`ToSqlConversionFailure("binding List parameters is not yet
+        // supported")`), so list columns are stored as JSON-encoded
+        // VARCHAR instead of DuckDB VARCHAR[] and decoded on read.
+        let entity_names_json =
+            serde_json::to_string(&entity_names).unwrap_or_else(|_| "[]".to_string());
 
         conn.execute(
             "INSERT INTO events (event_id, timestamp, event_type, user_message, \
@@ -69,7 +74,7 @@ impl DuckDbWriter {
                 event_type,
                 user_message,
                 miranda_response,
-                entity_names_value,
+                entity_names_json,
                 mood_state.as_str(),
                 mood_state.color_hex(),
                 Option::<String>::None,
@@ -89,7 +94,8 @@ impl DuckDbWriter {
                     entity.entity_type.as_str(),
                     timestamp.to_rfc3339(),
                     timestamp.to_rfc3339(),
-                    Value::List(vec![Value::Text(mood_state.as_str().to_string())]),
+                    serde_json::to_string(&vec![mood_state.as_str().to_string()])
+                        .unwrap_or_else(|_| "[]".to_string()),
                 ],
             )?;
         }
@@ -139,7 +145,7 @@ mod tests {
                 event_type VARCHAR NOT NULL,
                 user_message VARCHAR NOT NULL,
                 miranda_response VARCHAR NOT NULL,
-                entities VARCHAR[],
+                entities VARCHAR,
                 mood_state VARCHAR NOT NULL,
                 mood_rgb VARCHAR,
                 mood_hsl VARCHAR
@@ -150,7 +156,7 @@ mod tests {
                 first_mention TIMESTAMP NOT NULL,
                 last_mention TIMESTAMP NOT NULL,
                 mention_count INTEGER NOT NULL DEFAULT 1,
-                mood_contexts VARCHAR[],
+                mood_contexts VARCHAR,
                 PRIMARY KEY (entity_name, entity_type)
             );",
         )

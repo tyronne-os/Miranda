@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_type          VARCHAR NOT NULL,
     user_message        VARCHAR NOT NULL,
     miranda_response     VARCHAR NOT NULL,
-    entities             VARCHAR[],
+    entities             VARCHAR,
     mood_state           VARCHAR NOT NULL,
     mood_rgb             VARCHAR,
     mood_hsl             VARCHAR
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS entities (
     first_mention        TIMESTAMP NOT NULL,
     last_mention         TIMESTAMP NOT NULL,
     mention_count        INTEGER NOT NULL DEFAULT 1,
-    mood_contexts        VARCHAR[],
+    mood_contexts        VARCHAR,
     PRIMARY KEY (entity_name, entity_type)
 );
 
