@@ -407,3 +407,38 @@ Both fixes verified with real `cargo test` output, not code-review confidence.
 
 **Status: queued, not started.** Resuming current to-do list (real implementations of the 14 stub files, starting with `autonomy_calibration.rs` and `partnership_tracker.rs`).
 
+
+---
+
+## Session Status Update — All 9 WO-Conversational-Intelligence modules implemented (real logic, not stubs)
+
+All conversation modules now have real, tested implementations per `.kiro/specs/wo-conversational-intelligence/design.md`:
+- `mood_stream.rs` (Task 1) — done earlier this session
+- `state_machine.rs` (Task 2) — 5 states, micro-states, cue detection, mood/entity-driven transitions
+- `anticipation.rs` (Task 3, CAT 4) — confidence-gated proactive move generation with dismissal feedback
+- `interest_model.rs` (Task 4) — topic frequency/sentiment tracking, rate-limited curiosity questions with dismissal deprioritization
+- `knowledge_updater.rs` (Task 5) — correction detection, session-fact precedence, code style profiling
+- `persona_injection.rs` (Task 6) — 5 roles with explicit-cue + state/mood fallback detection
+- `response_tuning.rs` (Task 7) — mood/state-driven latency & depth targets, streaming preference
+- `autonomy_calibration.rs` (Task 8) — type-level floor enforcement, interview flow, track-record recheck
+- `partnership_tracker.rs` (Task 9) — goal extraction, progress detection, banned-pattern content filter
+- `prompt_builder.rs` (Task 10) — full integration, token-budget truncation in the defined priority order
+
+**Verified: 239/239 tests passing (`cargo test -p miranda-nodes`), 0 failed, 2 ignored** (the 2 ignored are the pre-existing live-Neo4j-container integration tests from WO-Memory, unrelated to this work).
+
+Both non-negotiable invariants verified passing:
+- `floor_categories_never_resolve_to_autonomous_under_any_interview_input`
+- `banned_pattern_corpus_is_rejected_at_100_percent`
+
+Two real bugs found and fixed during implementation (not just typos — logic errors caught by the tests doing their job):
+1. `partnership_tracker::extract_goal` didn't strip a leading "to " after the "my goal is " stem, producing malformed descriptions like "to ship pipeline 1..." — fixed.
+2. `anticipation`'s Reflection-state candidate had a base confidence (0.65) that could never clear the 0.7 gate, meaning Reflection would never surface a move at all regardless of mood — raised to 0.72 so a genuinely high-value moment ("capture what we learned") isn't permanently suppressed.
+
+### Task 11 remaining (integration tests & benchmarks)
+Not yet done: `miranda-nodes/tests/conversation_integration_tests.rs`, `scripts/conversation-intelligence-benchmarks.sh`, `CONVERSATIONAL_INTELLIGENCE.md`. Unit-level coverage is complete and real; this is the cross-module integration + measured latency layer per design.md's testing strategy.
+
+### Next
+- Task 11 (integration tests + benchmarks + report) for WO-Conversational-Intelligence
+- Then: WO-Model-Forge task implementations (naming, compatibility, gpu_provisioner, finetune_pipeline, merge_pipeline — currently still placeholder stubs)
+- Then: queued WO-News-Digest + sovereign action layer (per plan appended earlier this session)
+
