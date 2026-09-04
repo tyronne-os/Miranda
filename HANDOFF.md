@@ -156,6 +156,41 @@ Then point the canvas renderer to `http://localhost:8080/stream` in the UI setti
 
 ---
 
+
+## Phase One Design Specs (Miranda's Brain — Complete)
+
+Phase One of Miranda's cognitive architecture is now fully specced (requirements → design → tasks), covering two new Work Orders in addition to WO-1 through WO-5:
+
+### WO-Memory: Memory Data Lake (`.kiro/specs/wo-memory-data-lake/`)
+
+A bi-directional, local-first memory system built on three coordinated backends:
+- **Neo4j** (rootless Podman) — knowledge graph of entities, conversations, mood states, relationships
+- **Obsidian vault** — human-readable, bidirectionally-linked markdown notes for browsing history
+- **DuckDB** — SQL-queryable event index for fast analytics (mood filtering, entity lookup)
+- **Data lake** — immutable JSONL event log, source of truth for all conversation turns
+
+All storage lives under `/mnt/NOBILITY_VAULT/.miranda/`, encrypted at rest, zero cloud transmission. Retrieval is bi-directional: every new user message triggers a graph + index query for relevant past context (entity overlap, temporal recency, mood continuity), which is injected into the LLM system prompt before inference. This is what lets Miranda reference "yesterday's training run" or "the quantization issue we debugged last week" instead of resetting context every session.
+
+14 tasks, CAT 1-3 only (no CAT 4/5 in this spec), routed primarily to Nova Pro.
+
+### WO-Conversational-Intelligence: Adaptive Conversation Layer (`.kiro/specs/wo-conversational-intelligence/`)
+
+Moves Miranda from reactive Q&A to adaptive, anticipatory conversation:
+- **Continuous mood tracking** — mood is a live vector updated mid-message, not a per-turn snapshot; drives real-time avatar ARB color transitions
+- **Conversation state machine** — Opening/Deep Work/Debugging/Reflection/Casual states with micro-states, controlling response depth and tone
+- **Anticipatory move generator** — proactively surfaces next-step suggestions above a 0.7 confidence threshold (CAT 4 — real correctness risk, since a wrong confident prediction is worse than none)
+- **Interest model & curiosity engine** — Miranda tracks recurring topics/techniques and surfaces genuine questions about the user's own work (rate-limited to ≤1/hour)
+- **Real-time knowledge updates** — corrections, framework mentions, and code style apply forward within the same session
+- **Role/persona fluidity** — Research Partner, Rubber Duck, Peer Reviewer, Therapist, Brainstorm Co-Creator, auto-detected from conversational cues
+- **Autonomy calibration interview** — Miranda interviews the user on acceptable autonomy per action category (file ops, spending/GPU provisioning, git, install/config); stores thresholds and periodically re-checks as a track record builds
+- **Fixed autonomy floor (non-negotiable)** — destructive-at-scale, production-impacting, and high-blast-radius actions always require explicit confirmation regardless of calibration; this holds under every possible interview input
+- **Partnership investment tracking** — tracks user goals, surfaces progress unprompted, filtered against a banned-pattern list so acknowledgment never uses dependency or guilt language
+- **Mahogany Hall groundwork** — same memory/persona architecture supports sustained role-play and relationship continuity for the companionship project, using the same local-encrypted storage guarantees
+
+11 tasks; only Task 3 (Anticipatory Move Generator) is CAT 4, everything else CAT 2-3.
+
+Both specs pass full format validation (`validate_spec_format`) with zero errors.
+
 ## Deployment Checklist
 
 - [ ] `.env` file filled in with all credentials
