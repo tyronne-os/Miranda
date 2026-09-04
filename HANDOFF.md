@@ -442,3 +442,26 @@ Not yet done: `miranda-nodes/tests/conversation_integration_tests.rs`, `scripts/
 - Then: WO-Model-Forge task implementations (naming, compatibility, gpu_provisioner, finetune_pipeline, merge_pipeline — currently still placeholder stubs)
 - Then: queued WO-News-Digest + sovereign action layer (per plan appended earlier this session)
 
+
+---
+
+## MILESTONE: All 14 originally-missing stub files now real, tested implementations
+
+All 14 files that were blocking `cargo build -p miranda-nodes` at the start of this session (9 conversation/, 5 forge/) now have genuine logic per their design docs, not placeholders:
+
+**Model Forge (`.kiro/specs/wo-model-forge/`):**
+- `naming.rs` (Task 3) — deterministic name generation with pool-based collision resolution (Property 4)
+- `compatibility.rs` (Task 4) — pre-merge architecture/tokenizer validation (Property 2, gate 1 of 2)
+- `gpu_provisioner.rs` (Task 5) — spending-threshold confirmation gate (Property 1) + 15-min idle teardown (Property 3)
+- `finetune_pipeline.rs` (Task 6) — LoRA training command construction, divergence detection, metrics parsing
+- `merge_pipeline.rs` (Task 7) — mergekit command construction, typed `ValidatedModels` enforcing compatibility-before-merge, coherence smoke test (Property 2, gate 2 of 2)
+
+**Disclosed scope limitation (per build-standards "no simulated inference" rule):** `finetune_pipeline.rs` and `merge_pipeline.rs` do not fake an actual LoRA training run or mergekit invocation — this environment has no live GPU/mergekit/peft installation. What's real and tested: subprocess command construction, divergence/coherence detection logic, and result parsing — all correctness-critical and independently verifiable without live infra. The actual `Command::spawn()` call is an injected closure seam, real once a GPU-provisioned deployment exists.
+
+**Verified: 279/279 tests passing (`cargo test -p miranda-nodes`), 0 failed, 2 ignored.**
+
+### What remains for full spec completion (not blocking, tracked for later)
+- WO-Conversational-Intelligence Task 11: integration tests + benchmarks + `CONVERSATIONAL_INTELLIGENCE.md`
+- WO-Model-Forge Task 8+ (job orchestration wiring, Task 9 scope-boundary conversational handling — check tasks.md for exact remaining task numbers)
+- Then: queued WO-News-Digest + sovereign action layer
+
