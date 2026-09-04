@@ -374,3 +374,36 @@ Both fixes verified with real `cargo test` output, not code-review confidence.
 2. Begin real implementations for the 14 stub files (currently placeholders), starting with `autonomy_calibration.rs` and `partnership_tracker.rs` (the two non-negotiable invariant modules).
 3. User's outstanding manual step: CUPS purge (needs interactive sudo, commands provided earlier).
 
+
+---
+
+## Queued After Current To-Do List: WO-News-Digest + Sovereign Action Layer
+
+**User directive:** do not interrupt current progress (14 stub-file real implementations). This is appended to the END of the build queue.
+
+### Scope (plan presented, not yet spec'd — spec to be written when this item is reached)
+
+1. **Discovery Session** — one-time/re-runnable structured interview Miranda conducts to gather user research interests, active projects, source-weighting preferences, and autonomy calibration (reuses existing `autonomy_calibration` module). Output: versioned `UserProfile` in the memory lake.
+
+2. **AI News Digest Loop (3x/day)** — parallel fetchers against:
+   - GitHub trending/search API (public)
+   - Hugging Face trending models/papers API (public, HF token already vaulted)
+   - NVIDIA Developer Blog RSS + NGC catalog updates (public)
+   - Medium via per-tag/publication RSS feeds (`medium.com/feed/tag/<topic>`) — legitimate public route, NOT a paywall bypass; explicitly decided not to circumvent Medium's metered paywall
+   - YouTube Data API v3 (needs a Google Cloud API key, separate from GPU billing, free tier sufficient)
+
+   Pipeline: fetch → relevance-filter against UserProfile → dedupe vs. last digest → LLM-summarize into 10 ranked items with relevance rationale → store.
+
+   Storage: new DuckDB table `ai_news_digest(digest_id, timestamp, rank, source, title, url, summary, relevance_score)` + Obsidian note per digest (`obsidian/news/YYYY-MM-DD-digest.md`), retrievable via the existing retriever module. This is Miranda's "recent happenings in AI and tech" extended memory section.
+
+3. **Sovereign Computer-Use / Connectivity Layer (`miranda-actions`)** — capability layer for browser control, GitHub/HF/NVIDIA API calls via vaulted credentials, file/build/deploy actions. Every action writes to a visible, queryable `action_log` (non-negotiable, not hidden, regardless of autonomy level). Reuses the existing `autonomy_calibration` floor: DestructiveAtScale / ProductionImpacting / HighBlastRadius categories never auto-resolve to autonomous, including for Miranda's own self-directed actions. Everything below that floor runs with no pre-approval per user's "sovereign" directive.
+
+### Build order when reached
+1. Discovery session + UserProfile storage
+2. News fetchers, one source at a time, each tested against its live API before moving to the next
+3. Summarizer + digest storage + Obsidian note generation
+4. 3x/day scheduler in `miranda-supervisor`
+5. `miranda-actions` capability layer + action log wired to the autonomy floor
+
+**Status: queued, not started.** Resuming current to-do list (real implementations of the 14 stub files, starting with `autonomy_calibration.rs` and `partnership_tracker.rs`).
+
