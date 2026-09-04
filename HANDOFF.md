@@ -465,3 +465,27 @@ All 14 files that were blocking `cargo build -p miranda-nodes` at the start of t
 - WO-Model-Forge Task 8+ (job orchestration wiring, Task 9 scope-boundary conversational handling — check tasks.md for exact remaining task numbers)
 - Then: queued WO-News-Digest + sovereign action layer
 
+
+---
+
+## Honest Status: What Remains Undone (Sep 4, 2026)
+
+**Direct answer to "do I have enough to test the app": no, not yet.** What exists right now is a well-tested Rust *backend logic library* (`miranda-nodes`), not a running, talkable application. Here is exactly what's real versus what's still missing.
+
+### What is real and verified
+- `miranda-nodes` crate: 291+ tests passing (`cargo test -p miranda-nodes`)
+- WO-Memory (Neo4j/DuckDB/Obsidian writers, mood classifier, entity extractor, retriever): implemented, tested
+- WO-Conversational-Intelligence (all 10 modules: mood stream, state machine, anticipation, interest model, knowledge updater, persona injection, response tuning, autonomy calibration, partnership tracker, prompt builder): implemented, tested, including 8 real cross-module integration tests and measured latency benchmarks (all 4 budgets passed by 3-4 orders of magnitude in a debug build)
+- WO-Model-Forge (job parser, model registry, naming, compatibility validation, GPU provisioner with cost/idle gates, finetune/merge pipeline orchestration logic, job orchestrator state machine): implemented, tested — with disclosed scope limits below
+
+### What is NOT built yet — the actual gap between "tests pass" and "testable app"
+1. **No application entry point.** There is no `main.rs`/process that starts a server, opens a microphone, calls an LLM, and produces a spoken/rendered response. The conversation modules are real functions; nothing currently calls them in sequence against live input.
+2. **No UI wiring.** `client-apps/web/` (THE VANITY) has not been touched this session — it is not connected to any of tonight's Rust work.
+3. **Pipeline 1 (AWS Transcribe/Bedrock/Polly) is not wired to the new Rust conversation modules.** They exist in parallel; there is no code path connecting them.
+4. **Model Forge fine-tune/merge pipelines have never executed against real weights.** No GPU, no peft/mergekit installation in this environment. What's tested is command construction, divergence/coherence detection logic, and result parsing — real and correctness-critical, but not a real training/merge run. This is disclosed in `miranda-nodes/src/forge/mod.rs`'s own doc comment.
+5. **The queued WO-News-Digest (10-things-to-know loop) and sovereign computer-use/action-log layer are still just a written plan** (see earlier "Queued After Current To-Do List" section) — no code written yet.
+6. **WO-Model-Forge Task 10** (integration tests + `MODEL_FORGE.md`) not yet done — same disclosed-scope pattern as Tasks 6/7 would apply.
+
+### Recommended next milestone
+Wire a minimal real path: `client-apps/web/` (or a simple CLI) → Bedrock/Polly (Pipeline 1, already speced) → the real `miranda-nodes` conversation modules (mood/state/prompt_builder) → back out as a response. That is the smallest change that turns "291 tests pass" into "you can actually have a conversation with Miranda and see her mood/state/persona react in real time." Everything built tonight is the tested foundation that wiring would sit on top of — none of it is wasted, but none of it is directly usable by a human yet without that integration step.
+
